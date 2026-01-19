@@ -13,7 +13,7 @@ function formatTime(secs) {
   return `${m}:${s}`;
 }
 
-export default function Pomodoro({ onSessionComplete }) {
+export default function Pomodoro({ onSessionComplete, t: _t }) {
   const [mode, setMode] = useState('work'); // work, shortBreak, longBreak
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [remaining, setRemaining] = useState(DEFAULT_CONFIG.work);
@@ -23,7 +23,7 @@ export default function Pomodoro({ onSessionComplete }) {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [ambient, setAmbient] = useState(localStorage.getItem('pomoAmbient') || 'none'); // none | rain | sea
   const [ambientVolume, setAmbientVolume] = useState(Number(localStorage.getItem('pomoAmbientVol') || 0.3));
-  const [alarm, setAlarm] = useState(localStorage.getItem('pomoAlarm') || 'beep'); // 'beep' | 'chime' | blobUrl
+  const [alarm, setAlarm] = useState(localStorage.getItem('pomoAlarm') || 'beep'); // 'beep' | 'chime' | 'custom'
   const [alarmVol, setAlarmVol] = useState(Number(localStorage.getItem('pomoAlarmVol') || 1));
   const [customAlarmUrl, setCustomAlarmUrl] = useState(localStorage.getItem('pomoAlarmCustom') || '');
   const intervalRef = useRef(null);
@@ -217,12 +217,15 @@ export default function Pomodoro({ onSessionComplete }) {
         setTimeout(()=>{ try { o.stop(); ctx.close(); } catch(e){} }, 1400);
         return;
       }
-      // custom (object URL)
-      if (stored && stored.startsWith('blob:') || stored.startsWith('http')) {
-        const a = new Audio(stored);
-        a.volume = vol;
-        a.play().catch(()=>{});
-        return;
+      // custom (object URL stored separately)
+      if (stored === 'custom') {
+        const url = localStorage.getItem('pomoAlarmCustom');
+        if (url) {
+          const a = new Audio(url);
+          a.volume = vol;
+          a.play().catch(()=>{});
+          return;
+        }
       }
     } catch(e) { console.error('playAlarm failed', e); }
   };
@@ -251,10 +254,15 @@ export default function Pomodoro({ onSessionComplete }) {
         if (!f) return;
         const url = URL.createObjectURL(f);
         setCustomAlarmUrl(url);
-        setAlarm(url);
+        setAlarm('custom');
         try { localStorage.setItem('pomoAlarmCustom', url); } catch (e) {}
-        try { localStorage.setItem('pomoAlarm', url); } catch (e) {}
+        try { localStorage.setItem('pomoAlarm', 'custom'); } catch (e) {}
       } catch (e) { console.error('alarm upload', e); }
+    };
+
+    const t = (a,b) => {
+      if (typeof _t === 'function') return _t(a,b);
+      return a;
     };
 
   return (
@@ -284,8 +292,8 @@ export default function Pomodoro({ onSessionComplete }) {
           <button onClick={() => { setMode('longBreak'); setRemaining(config.longBreak); setRunning(false); }} className={`px-2 py-1 rounded ${mode==='longBreak'?'bg-indigo-100':'bg-slate-50'}`}>Long</button>
         </div>
         <div className="w-full mt-3 flex items-center justify-between">
-          <button onClick={() => setShowSettings(s => !s)} className="text-xs text-indigo-600">{showSettings ? 'Close' : 'Settings'}</button>
-          <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={soundEnabled} onChange={(e)=>{ setSoundEnabled(e.target.checked); localStorage.setItem('pomoState', JSON.stringify({ mode, remaining, completedSessions, config, soundEnabled: e.target.checked })); }} /> Sound</label>
+            <button onClick={() => setShowSettings(s => !s)} className="text-xs text-indigo-600">{showSettings ? t('Close','बंद') : t('Settings','सेटिंग्स')}</button>
+            <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={soundEnabled} onChange={(e)=>{ setSoundEnabled(e.target.checked); localStorage.setItem('pomoState', JSON.stringify({ mode, remaining, completedSessions, config, soundEnabled: e.target.checked })); }} /> {t('Sound','ध्वनि')}</label>
         </div>
         {showSettings && (
           <div className="w-full mt-3 p-3 bg-slate-50 rounded-lg border">
@@ -303,16 +311,16 @@ export default function Pomodoro({ onSessionComplete }) {
                 <input type="number" min="1" value={Math.floor(config.longBreak/60)} onChange={(e)=>{ const v = Math.max(1, Number(e.target.value)); saveConfig({ ...config, longBreak: v*60 }); }} className="w-full p-1 rounded" />
               </div>
             </div>
-            <div className="mt-2 text-[10px] text-slate-500">Sessions before long break</div>
+            <div className="mt-2 text-[10px] text-slate-500">{t('Sessions before long break','लॉन्ग ब्रेक से पहले सत्र')}</div>
             <input type="number" min="1" value={config.sessionsBeforeLongBreak} onChange={(e)=>{ const v = Math.max(1, Number(e.target.value)); saveConfig({ ...config, sessionsBeforeLongBreak: v }); }} className="w-24 p-1 rounded mt-1" />
 
             <div className="mt-3 border-t pt-3 text-xs">
-              <div className="mb-2 text-[11px] font-semibold text-slate-600">Ambient</div>
+              <div className="mb-2 text-[11px] font-semibold text-slate-600">{t('Ambient','प्राकृतिक ध्वनि')}</div>
               <div className="flex items-center gap-2">
                 <select value={ambient} onChange={(e)=>{ setAmbient(e.target.value); localStorage.setItem('pomoAmbient', e.target.value); }} className="p-1 rounded text-xs">
-                  <option value="none">None</option>
-                  <option value="rain">Rain</option>
-                  <option value="sea">Sea</option>
+                  <option value="none">{t('None','नहीं')}</option>
+                  <option value="rain">{t('Rain','बारिश')}</option>
+                  <option value="sea">{t('Sea','समुद्र')}</option>
                 </select>
                 <div className="flex items-center gap-2">
                   <input type="range" min="0" max="1" step="0.01" value={ambientVolume} onChange={(e)=>{ const v = Number(e.target.value); setAmbientVolume(v); localStorage.setItem('pomoAmbientVol', String(v)); }} />
@@ -322,19 +330,19 @@ export default function Pomodoro({ onSessionComplete }) {
             </div>
 
             <div className="mt-3 border-t pt-3 text-xs">
-              <div className="mb-2 text-[11px] font-semibold text-slate-600">Alarm</div>
+              <div className="mb-2 text-[11px] font-semibold text-slate-600">{t('Alarm','अलार्म')}</div>
               <div className="flex items-center gap-2 mb-2">
                 <select value={alarm} onChange={(e)=>{ setAlarm(e.target.value); try { localStorage.setItem('pomoAlarm', e.target.value); } catch(e){} }} className="p-1 rounded text-xs">
-                  <option value="beep">Beep</option>
-                  <option value="chime">Chime</option>
-                  <option value={customAlarmUrl || 'custom'}>Custom</option>
+                  <option value="beep">{t('Beep','बिप')}</option>
+                  <option value="chime">{t('Chime','घंटी')}</option>
+                  <option value="custom">{t('Custom','कस्टम')}</option>
                 </select>
                 <div className="flex items-center gap-2">
                   <input type="range" min="0" max="1" step="0.01" value={alarmVol} onChange={(e)=>{ const v = Number(e.target.value); setAlarmVol(v); try{ localStorage.setItem('pomoAlarmVol', String(v)); }catch(e){} }} />
                   <div className="text-[11px] text-slate-500">Vol</div>
                 </div>
               </div>
-              <div className="text-[11px] text-slate-500">Upload custom alarm (mp3, wav)</div>
+              <div className="text-[11px] text-slate-500">{t('Upload custom alarm (mp3, wav)','कस्टम अलार्म अपलोड (mp3, wav)')}</div>
               <input type="file" accept="audio/*" onChange={handleAlarmFile} className="mt-1 text-xs" />
               {customAlarmUrl && (
                 <div className="mt-2 text-[11px]">

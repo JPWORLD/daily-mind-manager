@@ -473,10 +473,10 @@ const App = () => {
                 </button>
               )}
                   {/* Pomodoro component (lazy-loaded) */}
-                  <Suspense fallback={<div className="mt-4 p-4 bg-white rounded-2xl text-center">Loading timer…</div>}>
+                  <Suspense fallback={<div className="mt-4 p-4 bg-white rounded-2xl text-center">{t('Loading timer…','टाइमर लोड हो रहा है…')}</div>}>
                     <Pomodoro onSessionComplete={(count) => {
                       try { saveData({ lastPomodoroCount: count }); } catch {}
-                    }} />
+                    }} t={t} />
                   </Suspense>
             </section>
 
