@@ -21,7 +21,14 @@ export default function Pomodoro({ onSessionComplete }) {
   const [completedSessions, setCompletedSessions] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [ambient, setAmbient] = useState(localStorage.getItem('pomoAmbient') || 'none'); // none | rain | sea
+  const [ambientVolume, setAmbientVolume] = useState(Number(localStorage.getItem('pomoAmbientVol') || 0.3));
+  const [alarm, setAlarm] = useState(localStorage.getItem('pomoAlarm') || 'beep'); // 'beep' | 'chime' | blobUrl
+  const [alarmVol, setAlarmVol] = useState(Number(localStorage.getItem('pomoAlarmVol') || 1));
+  const [customAlarmUrl, setCustomAlarmUrl] = useState(localStorage.getItem('pomoAlarmCustom') || '');
   const intervalRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const ambientNodesRef = useRef(null);
 
   // Load state from localStorage (MVP persistence)
   useEffect(() => {
@@ -59,6 +66,66 @@ export default function Pomodoro({ onSessionComplete }) {
     return () => clearInterval(intervalRef.current);
   }, [running]);
 
+  // ambient sound management (WebAudio procedural noise)
+  useEffect(() => {
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    // stop existing
+    if (ambientNodesRef.current) {
+      try { ambientNodesRef.current.gain.gain.cancelScheduledValues(0); ambientNodesRef.current.source.stop(); } catch (e) {}
+      ambientNodesRef.current = null;
+    }
+    if (ambient === 'none') return;
+
+    // create noise buffer
+    const bufferSize = ctx.sampleRate * 2;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+
+    const filter = ctx.createBiquadFilter();
+    if (ambient === 'rain') {
+      filter.type = 'highpass';
+      filter.frequency.value = 800;
+    } else if (ambient === 'sea') {
+      filter.type = 'lowpass';
+      filter.frequency.value = 800;
+    }
+
+    const gain = ctx.createGain();
+    gain.gain.value = ambientVolume;
+
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    source.start();
+    ambientNodesRef.current = { source, filter, gain };
+    localStorage.setItem('pomoAmbient', ambient);
+    localStorage.setItem('pomoAmbientVol', String(ambientVolume));
+
+    // keep alarm settings in sync
+    try {
+      if (alarm) localStorage.setItem('pomoAlarm', alarm);
+    } catch (e) {}
+    try { localStorage.setItem('pomoAlarmVol', String(alarmVol)); } catch (e) {}
+    try { if (customAlarmUrl) localStorage.setItem('pomoAlarmCustom', customAlarmUrl); } catch (e) {}
+
+    return () => {
+      try { source.stop(); } catch (e) {}
+      ambientNodesRef.current = null;
+    };
+  }, [ambient, ambientVolume]);
+
   const handlePeriodEnd = () => {
     // notify (desktop notifications)
     try {
@@ -72,7 +139,7 @@ export default function Pomodoro({ onSessionComplete }) {
 
     // sound (WebAudio beep)
     try {
-      if (soundEnabled) playBeep();
+      if (soundEnabled) playAlarm();
     } catch (e) {}
 
     if (mode === 'work') {
@@ -128,6 +195,38 @@ export default function Pomodoro({ onSessionComplete }) {
     localStorage.setItem('pomoState', JSON.stringify({ mode, remaining, completedSessions, config: newConfig, soundEnabled }));
   };
 
+  // alarm play supporting beep, chime, or custom audio
+  const playAlarm = async () => {
+    try {
+      const stored = localStorage.getItem('pomoAlarm') || 'beep';
+      const vol = Number(localStorage.getItem('pomoAlarmVol') || 1);
+      if (stored === 'beep') return playBeep();
+      if (stored === 'chime') {
+        // small chime via WebAudio (harmonic)
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'triangle';
+        o.frequency.value = 880;
+        g.gain.value = 0.0001;
+        o.connect(g);
+        g.connect(ctx.destination);
+        g.gain.exponentialRampToValueAtTime(vol * 0.2, ctx.currentTime + 0.01);
+        o.start();
+        g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 1.2);
+        setTimeout(()=>{ try { o.stop(); ctx.close(); } catch(e){} }, 1400);
+        return;
+      }
+      // custom (object URL)
+      if (stored && stored.startsWith('blob:') || stored.startsWith('http')) {
+        const a = new Audio(stored);
+        a.volume = vol;
+        a.play().catch(()=>{});
+        return;
+      }
+    } catch(e) { console.error('playAlarm failed', e); }
+  };
+
   // simple beep via WebAudio
   const playBeep = () => {
     try {
@@ -145,6 +244,18 @@ export default function Pomodoro({ onSessionComplete }) {
       setTimeout(() => { try { o.stop(); ctx.close(); } catch (e) {} }, 700);
     } catch (e) { console.error('beep failed', e); }
   };
+
+    const handleAlarmFile = (e) => {
+      try {
+        const f = e.target.files && e.target.files[0];
+        if (!f) return;
+        const url = URL.createObjectURL(f);
+        setCustomAlarmUrl(url);
+        setAlarm(url);
+        try { localStorage.setItem('pomoAlarmCustom', url); } catch (e) {}
+        try { localStorage.setItem('pomoAlarm', url); } catch (e) {}
+      } catch (e) { console.error('alarm upload', e); }
+    };
 
   return (
     <div className="bg-white p-4 rounded-2xl shadow mt-4">
@@ -194,6 +305,43 @@ export default function Pomodoro({ onSessionComplete }) {
             </div>
             <div className="mt-2 text-[10px] text-slate-500">Sessions before long break</div>
             <input type="number" min="1" value={config.sessionsBeforeLongBreak} onChange={(e)=>{ const v = Math.max(1, Number(e.target.value)); saveConfig({ ...config, sessionsBeforeLongBreak: v }); }} className="w-24 p-1 rounded mt-1" />
+
+            <div className="mt-3 border-t pt-3 text-xs">
+              <div className="mb-2 text-[11px] font-semibold text-slate-600">Ambient</div>
+              <div className="flex items-center gap-2">
+                <select value={ambient} onChange={(e)=>{ setAmbient(e.target.value); localStorage.setItem('pomoAmbient', e.target.value); }} className="p-1 rounded text-xs">
+                  <option value="none">None</option>
+                  <option value="rain">Rain</option>
+                  <option value="sea">Sea</option>
+                </select>
+                <div className="flex items-center gap-2">
+                  <input type="range" min="0" max="1" step="0.01" value={ambientVolume} onChange={(e)=>{ const v = Number(e.target.value); setAmbientVolume(v); localStorage.setItem('pomoAmbientVol', String(v)); }} />
+                  <div className="text-[11px] text-slate-500">Vol</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 border-t pt-3 text-xs">
+              <div className="mb-2 text-[11px] font-semibold text-slate-600">Alarm</div>
+              <div className="flex items-center gap-2 mb-2">
+                <select value={alarm} onChange={(e)=>{ setAlarm(e.target.value); try { localStorage.setItem('pomoAlarm', e.target.value); } catch(e){} }} className="p-1 rounded text-xs">
+                  <option value="beep">Beep</option>
+                  <option value="chime">Chime</option>
+                  <option value={customAlarmUrl || 'custom'}>Custom</option>
+                </select>
+                <div className="flex items-center gap-2">
+                  <input type="range" min="0" max="1" step="0.01" value={alarmVol} onChange={(e)=>{ const v = Number(e.target.value); setAlarmVol(v); try{ localStorage.setItem('pomoAlarmVol', String(v)); }catch(e){} }} />
+                  <div className="text-[11px] text-slate-500">Vol</div>
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-500">Upload custom alarm (mp3, wav)</div>
+              <input type="file" accept="audio/*" onChange={handleAlarmFile} className="mt-1 text-xs" />
+              {customAlarmUrl && (
+                <div className="mt-2 text-[11px]">
+                  <audio src={customAlarmUrl} controls className="w-full" />
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
