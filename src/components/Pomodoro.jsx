@@ -39,114 +39,89 @@ export default function Pomodoro({ onSessionComplete, t: _t }) {
         const s = JSON.parse(raw);
         setMode(s.mode || 'work');
         setRemaining(s.remaining ?? DEFAULT_CONFIG.work);
-        if (ambientNodesRef.current) {
-          try { ambientNodesRef.current.gain.gain.cancelScheduledValues(0); ambientNodesRef.current.source.stop(); } catch (e) {}
-          ambientNodesRef.current = null;
-        }
-        if (ambient === 'none') return;
-
-        // prefer static ambient assets if present under /ambient
-        const tryUseAsset = async (name) => {
-          try {
-            const res = await fetch(`/ambient/${name}`, { method: 'HEAD' });
-            return res.ok;
-          } catch (e) { return false; }
-        };
-
-        (async () => {
-          const assetName = ambient === 'rain' ? 'rain.mp3' : ambient === 'sea' ? 'sea.mp3' : null;
-          if (assetName && await tryUseAsset(assetName)) {
-            try {
-              const audio = new Audio(`/ambient/${assetName}`);
-              audio.loop = true;
-              audio.volume = ambientVolume;
-              audio.play().catch(()=>{});
-              ambientNodesRef.current = { source: audio, gain: { gain: { cancelScheduledValues: ()=>{} } } };
-              localStorage.setItem('pomoAmbient', ambient);
-              localStorage.setItem('pomoAmbientVol', String(ambientVolume));
-              return;
-            } catch (e) {}
-          }
-
-          // fallback: create noise buffer
-          const bufferSize = ctx.sampleRate * 2;
-          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-          const data = buffer.getChannelData(0);
-          for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
-
-          const source = ctx.createBufferSource();
-          source.buffer = buffer;
-          source.loop = true;
-
-          const filter = ctx.createBiquadFilter();
-          if (ambient === 'rain') {
-            filter.type = 'highpass';
-            filter.frequency.value = 800;
-          } else if (ambient === 'sea') {
-            filter.type = 'lowpass';
-            filter.frequency.value = 800;
-          }
-
-          const gain = ctx.createGain();
-          gain.gain.value = ambientVolume;
-
-          source.connect(filter);
-          filter.connect(gain);
-          gain.connect(ctx.destination);
-          source.start();
-          ambientNodesRef.current = { source, filter, gain };
+        setCompletedSessions(s.completedSessions || 0);
+        if (s.config) setConfig(s.config);
+        if (typeof s.soundEnabled === 'boolean') setSoundEnabled(s.soundEnabled);
+      }
+    } catch {}
   }, []);
-          localStorage.setItem('pomoAmbient', ambient);
-          localStorage.setItem('pomoAmbientVol', String(ambientVolume));
-        })();
+
+  // ensure AudioContext exists
+  useEffect(() => {
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {}
+  }, []);
+
+  // ambient sound management (prefers /ambient assets, falls back to procedural noise)
+  useEffect(() => {
     const ctx = audioCtxRef.current;
-    if (!ctx) return;
-    // stop existing
+    // stop existing ambient
     if (ambientNodesRef.current) {
-      try { ambientNodesRef.current.gain.gain.cancelScheduledValues(0); ambientNodesRef.current.source.stop(); } catch (e) {}
+      try { if (ambientNodesRef.current.source && typeof ambientNodesRef.current.source.pause === 'function') ambientNodesRef.current.source.pause(); } catch (e) {}
+      try { if (ambientNodesRef.current.gain && ambientNodesRef.current.gain.gain) ambientNodesRef.current.gain.gain.cancelScheduledValues(0); } catch (e) {}
       ambientNodesRef.current = null;
     }
     if (ambient === 'none') return;
 
-    // create noise buffer
-    const bufferSize = ctx.sampleRate * 2;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
+    const tryUseAsset = async (name) => {
+      try {
+        const res = await fetch(`/ambient/${name}`, { method: 'HEAD' });
+        return res.ok;
+      } catch (e) { return false; }
+    };
 
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
+    (async () => {
+      const assetName = ambient === 'rain' ? 'rain.mp3' : ambient === 'sea' ? 'sea.mp3' : null;
+      if (assetName && await tryUseAsset(assetName)) {
+        try {
+          const audio = new Audio(`/ambient/${assetName}`);
+          audio.loop = true;
+          audio.volume = ambientVolume;
+          await audio.play().catch(()=>{});
+          ambientNodesRef.current = { source: audio, gain: { gain: { cancelScheduledValues: ()=>{} } } };
+          localStorage.setItem('pomoAmbient', ambient);
+          localStorage.setItem('pomoAmbientVol', String(ambientVolume));
+          return;
+        } catch (e) {
+          // fallback to procedural
+        }
+      }
 
-    const filter = ctx.createBiquadFilter();
-    if (ambient === 'rain') {
-      filter.type = 'highpass';
-      filter.frequency.value = 800;
-    } else if (ambient === 'sea') {
-      filter.type = 'lowpass';
-      filter.frequency.value = 800;
-    }
+      if (!ctx) return;
+      // fallback: create noise buffer
+      const bufferSize = ctx.sampleRate * 2;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
 
-    const gain = ctx.createGain();
-    gain.gain.value = ambientVolume;
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
 
-    source.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-    source.start();
-    ambientNodesRef.current = { source, filter, gain };
-    localStorage.setItem('pomoAmbient', ambient);
-    localStorage.setItem('pomoAmbientVol', String(ambientVolume));
+      const filter = ctx.createBiquadFilter();
+      if (ambient === 'rain') {
+        filter.type = 'highpass';
+        filter.frequency.value = 800;
+      } else if (ambient === 'sea') {
+        filter.type = 'lowpass';
+        filter.frequency.value = 800;
+      }
 
-    // keep alarm settings in sync
-    try {
-      if (alarm) localStorage.setItem('pomoAlarm', alarm);
-    } catch (e) {}
-    try { localStorage.setItem('pomoAlarmVol', String(alarmVol)); } catch (e) {}
-    try { if (customAlarmUrl) localStorage.setItem('pomoAlarmCustom', customAlarmUrl); } catch (e) {}
+      const gain = ctx.createGain();
+      gain.gain.value = ambientVolume;
+
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      source.start();
+      ambientNodesRef.current = { source, filter, gain };
+      localStorage.setItem('pomoAmbient', ambient);
+      localStorage.setItem('pomoAmbientVol', String(ambientVolume));
+    })();
 
     return () => {
-      try { source.stop(); } catch (e) {}
+      try { if (ambientNodesRef.current && ambientNodesRef.current.source && typeof ambientNodesRef.current.source.pause === 'function') ambientNodesRef.current.source.pause(); } catch (e) {}
       ambientNodesRef.current = null;
     };
   }, [ambient, ambientVolume]);
