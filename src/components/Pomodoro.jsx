@@ -26,6 +26,7 @@ export default function Pomodoro({ onSessionComplete, t: _t }) {
   const [alarm, setAlarm] = useState(localStorage.getItem('pomoAlarm') || 'beep'); // 'beep' | 'chime' | 'custom'
   const [alarmVol, setAlarmVol] = useState(Number(localStorage.getItem('pomoAlarmVol') || 1));
   const [customAlarmUrl, setCustomAlarmUrl] = useState(localStorage.getItem('pomoAlarmCustom') || '');
+  const [customAlarmName, setCustomAlarmName] = useState(localStorage.getItem('pomoAlarmCustomName') || '');
   const intervalRef = useRef(null);
   const audioCtxRef = useRef(null);
   const ambientNodesRef = useRef(null);
@@ -38,42 +39,66 @@ export default function Pomodoro({ onSessionComplete, t: _t }) {
         const s = JSON.parse(raw);
         setMode(s.mode || 'work');
         setRemaining(s.remaining ?? DEFAULT_CONFIG.work);
-        setCompletedSessions(s.completedSessions || 0);
-        if (s.config) setConfig(s.config);
-        if (typeof s.soundEnabled === 'boolean') setSoundEnabled(s.soundEnabled);
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('pomoState', JSON.stringify({ mode, remaining, completedSessions, config, soundEnabled }));
-  }, [mode, remaining, completedSessions]);
-
-  useEffect(() => {
-    if (!running) return;
-    intervalRef.current = setInterval(() => {
-      setRemaining(r => {
-        if (r <= 1) {
-          clearInterval(intervalRef.current);
-          setRunning(false);
-          handlePeriodEnd();
-          return 0;
+        if (ambientNodesRef.current) {
+          try { ambientNodesRef.current.gain.gain.cancelScheduledValues(0); ambientNodesRef.current.source.stop(); } catch (e) {}
+          ambientNodesRef.current = null;
         }
-        return r - 1;
-      });
-    }, 1000);
+        if (ambient === 'none') return;
 
-    return () => clearInterval(intervalRef.current);
-  }, [running]);
+        // prefer static ambient assets if present under /ambient
+        const tryUseAsset = async (name) => {
+          try {
+            const res = await fetch(`/ambient/${name}`, { method: 'HEAD' });
+            return res.ok;
+          } catch (e) { return false; }
+        };
 
-  // ambient sound management (WebAudio procedural noise)
-  useEffect(() => {
-    try {
-      if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    } catch (e) {}
+        (async () => {
+          const assetName = ambient === 'rain' ? 'rain.mp3' : ambient === 'sea' ? 'sea.mp3' : null;
+          if (assetName && await tryUseAsset(assetName)) {
+            try {
+              const audio = new Audio(`/ambient/${assetName}`);
+              audio.loop = true;
+              audio.volume = ambientVolume;
+              audio.play().catch(()=>{});
+              ambientNodesRef.current = { source: audio, gain: { gain: { cancelScheduledValues: ()=>{} } } };
+              localStorage.setItem('pomoAmbient', ambient);
+              localStorage.setItem('pomoAmbientVol', String(ambientVolume));
+              return;
+            } catch (e) {}
+          }
+
+          // fallback: create noise buffer
+          const bufferSize = ctx.sampleRate * 2;
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
+
+          const source = ctx.createBufferSource();
+          source.buffer = buffer;
+          source.loop = true;
+
+          const filter = ctx.createBiquadFilter();
+          if (ambient === 'rain') {
+            filter.type = 'highpass';
+            filter.frequency.value = 800;
+          } else if (ambient === 'sea') {
+            filter.type = 'lowpass';
+            filter.frequency.value = 800;
+          }
+
+          const gain = ctx.createGain();
+          gain.gain.value = ambientVolume;
+
+          source.connect(filter);
+          filter.connect(gain);
+          gain.connect(ctx.destination);
+          source.start();
+          ambientNodesRef.current = { source, filter, gain };
   }, []);
-
-  useEffect(() => {
+          localStorage.setItem('pomoAmbient', ambient);
+          localStorage.setItem('pomoAmbientVol', String(ambientVolume));
+        })();
     const ctx = audioCtxRef.current;
     if (!ctx) return;
     // stop existing
@@ -257,6 +282,7 @@ export default function Pomodoro({ onSessionComplete, t: _t }) {
         setAlarm('custom');
         try { localStorage.setItem('pomoAlarmCustom', url); } catch (e) {}
         try { localStorage.setItem('pomoAlarm', 'custom'); } catch (e) {}
+        try { setCustomAlarmName(f.name || 'custom'); localStorage.setItem('pomoAlarmCustomName', f.name || 'custom'); } catch (e) {}
       } catch (e) { console.error('alarm upload', e); }
     };
 
@@ -346,6 +372,7 @@ export default function Pomodoro({ onSessionComplete, t: _t }) {
               <input type="file" accept="audio/*" onChange={handleAlarmFile} className="mt-1 text-xs" />
               {customAlarmUrl && (
                 <div className="mt-2 text-[11px]">
+                  <div className="text-[11px] text-slate-600 mb-1">{t('Uploaded:','अपलोड किया गया:')} {customAlarmName || customAlarmUrl}</div>
                   <audio src={customAlarmUrl} controls className="w-full" />
                 </div>
               )}
