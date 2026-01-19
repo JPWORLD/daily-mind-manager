@@ -418,13 +418,13 @@ const App = () => {
             onClick={() => setActiveTab('daily')}
             className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'daily' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
           >
-            Aaj Ka Din
+            {t('Today','आज')}
           </button>
           <button 
             onClick={() => setActiveTab('hold')}
             className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'hold' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
           >
-            Hold List
+            {t('Hold List','होल्ड सूची')}
           </button>
         </div>
 
@@ -432,7 +432,7 @@ const App = () => {
           <>
             {/* Mood Tracker */}
             <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-in fade-in slide-in-from-bottom-2">
-              <h2 className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest">Mera Mood Abhi Kaisa Hai?</h2>
+              <h2 className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest">{t('How are you feeling now?','मेरा मूड अभी कैसा है?')}</h2>
               <div className="flex justify-around items-center">
                 <button onClick={() => handleMoodChange('happy')} className={`p-4 rounded-full transition-all ${mood === 'happy' ? 'bg-green-100 scale-125' : 'bg-slate-50 opacity-40 hover:opacity-100'}`}>
                   <Smile className={`w-10 h-10 ${mood === 'happy' ? 'text-green-600' : 'text-slate-400'}`} />
@@ -456,7 +456,7 @@ const App = () => {
               </h2>
               <input 
                 type="text" 
-                placeholder="Aaj ka sabse zaruri kaam..." 
+                placeholder={t('Today\'s most important task...','आज का सबसे जरूरी काम...')} 
                 className="w-full bg-indigo-500/30 border-none rounded-xl p-4 text-white placeholder:text-indigo-200 focus:ring-2 focus:ring-white mb-4 shadow-inner"
                 value={todayTask}
                 onChange={(e) => {
@@ -488,7 +488,7 @@ const App = () => {
               <div className="flex gap-2 mb-4">
                 <input 
                   type="text" 
-                  placeholder="Jo bhi pareshan kare likh do..." 
+                  placeholder={t('Write whatever is bothering you...','जो भी परेशान करे लिख दें...')} 
                   className="flex-1 p-3 bg-slate-50 rounded-xl border-none text-sm focus:ring-1 focus:ring-slate-200"
                   value={noiseInput}
                   onChange={(e) => setNoiseInput(e.target.value)}

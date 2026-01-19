@@ -40,14 +40,18 @@ jobs:
           fi
           echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
 
-      - name: Alias domain to deployment
+      - name: Alias domain to deployment (optional)
         if: always()
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           DEPLOY_URL: ${{ steps.build-and-deploy.outputs.url }}
         run: |
-          # Alias the deployment to the custom domain. Requires VERCEL_TOKEN and that
-          # the domain `daily.bitmenders.in` has been added to the Vercel project and DNS pointed.
+          # Alias the deployment to the custom domain if a VERCEL_TOKEN secret is present.
+          # This step will be skipped (no-op) if `VERCEL_TOKEN` is not set in repo secrets.
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "VERCEL_TOKEN not set — skipping alias step. Add repository secret VERCEL_TOKEN to enable automatic aliasing."
+            exit 0
+          fi
           if [ -z "$DEPLOY_URL" ]; then
             echo "No deployment URL found, skipping alias step."
             exit 0
