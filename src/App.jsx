@@ -39,6 +39,10 @@ const App = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, synced, error
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [username, setUsername] = useState(localStorage.getItem('dmm_username') || '');
+  const [lang, setLang] = useState(localStorage.getItem('dmm_lang') || 'en'); // 'en' | 'hi'
+  const [temperature, setTemperature] = useState(null);
+  const [themeMode, setThemeMode] = useState('default'); // e.g., sunny, rainy, sea, default
 
   // App State
   const [mood, setMood] = useState(null);
@@ -88,9 +92,9 @@ const App = () => {
         if (s.noiseList) setNoiseList(s.noiseList);
         if (s.holdItems) setHoldItems(s.holdItems);
       } else {
-        // show onboarding for fresh users
+        // first-time onboarding if username not set
         const seen = localStorage.getItem('dmm_seen_onboarding');
-        if (!seen) setShowOnboarding(true);
+        if (!seen || !username) setShowOnboarding(true);
       }
     } catch (e) {
       console.error('load local state failed', e);
@@ -276,7 +280,88 @@ const App = () => {
         console.error("Import failed", err);
       }
     };
+
   };
+
+    // Onboarding actions: save username + language and optionally prepopulate hold list
+    const completeOnboarding = (name, chosenLang) => {
+      const uname = (name || '').trim();
+      if (uname) {
+        setUsername(uname);
+        localStorage.setItem('dmm_username', uname);
+      }
+      if (chosenLang) {
+        setLang(chosenLang);
+        localStorage.setItem('dmm_lang', chosenLang);
+      }
+      // prepopulate holdItems if empty
+      if (!holdItems || holdItems.length === 0) {
+        const seed = [
+          { id: 1, title: "Learn Guitar", status: "Hold", icon: "🎸" },
+          { id: 2, title: "Buy a Car", status: "Hold", icon: "🚗" },
+          { id: 3, title: "AWS Cert", status: "Hold", icon: "☁️" },
+          { id: 4, title: "iPhone & Investments", status: "Hold", icon: "📱" }
+        ];
+        setHoldItems(seed);
+        saveData({ holdItems: seed });
+      }
+      setShowOnboarding(false);
+      localStorage.setItem('dmm_seen_onboarding', '1');
+    };
+
+    // Geolocation + weather (optional: requires VITE_OPENWEATHER_KEY)
+    useEffect(() => {
+      const key = import.meta.env.VITE_OPENWEATHER_KEY || '';
+      const fetchWeather = async (lat, lon) => {
+        try {
+          if (!key) return;
+          const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${key}`);
+          if (!res.ok) return;
+          const j = await res.json();
+          setTemperature(Math.round(j.main.temp));
+          const weather = (j.weather && j.weather[0] && j.weather[0].main) || '';
+          if (/rain/i.test(weather)) setThemeMode('rainy');
+          else if (/cloud/i.test(weather)) setThemeMode('cloudy');
+          else if (/clear/i.test(weather)) setThemeMode('sunny');
+          else setThemeMode('default');
+        } catch (e) { console.error('weather fetch failed', e); }
+      };
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const { latitude, longitude } = pos.coords;
+          fetchWeather(latitude, longitude);
+        }, (err) => {
+          // fallback: try IP-based location (no API key)
+          fetch('https://ipapi.co/json/').then(r=>r.json()).then(d=>{
+            if (d && d.latitude && d.longitude) fetchWeather(d.latitude, d.longitude);
+          }).catch(()=>{});
+        });
+      }
+    }, []);
+
+    // Hold list CRUD with emoji/icon support
+    const addHoldItem = (title, icon) => {
+      const item = { id: Date.now(), title: title || 'Untitled', status: 'Hold', icon: icon || '📝' };
+      const next = [...holdItems, item];
+      setHoldItems(next);
+      saveData({ holdItems: next });
+    };
+
+    const updateHoldItem = (id, patch) => {
+      const next = holdItems.map(h => h.id === id ? { ...h, ...patch } : h);
+      setHoldItems(next);
+      saveData({ holdItems: next });
+    };
+
+    const removeHoldItem = (id) => {
+      const next = holdItems.filter(h => h.id !== id);
+      setHoldItems(next);
+      saveData({ holdItems: next });
+    };
+
+  // Simple translation helper
+  const t = (en, hi) => (lang === 'hi' ? (hi || en) : en);
 
   // Render Helpers
   const getIcon = (iconName) => {
@@ -294,6 +379,9 @@ const App = () => {
       <style>{`
         body { -webkit-tap-highlight-color: transparent; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .theme-sunny { background-image: linear-gradient(180deg,#fff7ed,#fff); }
+        .theme-rainy { background-image: linear-gradient(180deg,#e6f0ff,#f8fafc); }
+        .theme-sea { background-image: linear-gradient(180deg,#e6fff7,#f8fffd); }
       `}</style>
 
       {/* Header */}
@@ -302,8 +390,8 @@ const App = () => {
           <div className="flex items-center gap-2">
             <BrainCircuit className="w-8 h-8 text-indigo-600" />
             <div>
-              <h1 className="text-lg font-bold text-slate-900 leading-none">Mind Manager</h1>
-              <p className="text-[10px] text-slate-400 uppercase tracking-tighter">Powered by Cloud Sync</p>
+              <h1 className="text-lg font-bold text-slate-900 leading-none">{t('Mind Manager','माइंड मैनेजर')}</h1>
+              <p className="text-[10px] text-slate-400 uppercase tracking-tighter">{t('Powered by Cloud Sync','क्लाउड सिंक के साथ')}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -312,9 +400,13 @@ const App = () => {
               {syncStatus === 'synced' && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
               {syncStatus === 'error' && <AlertCircle className="w-3 h-3 text-red-500" />}
             </div>
-            <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-slate-100 rounded-full">
+            <div className="flex items-center gap-3">
+              {temperature !== null && <div className="text-sm text-slate-600">{temperature}°C</div>}
+              <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-slate-100 rounded-full">
               <Settings className="w-5 h-5 text-slate-500" />
             </button>
+              <div className="text-xs text-slate-500">{username ? username : ''}</div>
+            </div>
           </div>
         </div>
       </header>
@@ -422,6 +514,31 @@ const App = () => {
                     <p className="text-xs">Abhi koi shor nahi hai...</p>
                   </div>
                 )}
+              </div>
+            </section>
+            
+            {/* Hold list quick add */}
+            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+              <h2 className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest">{t('Hold List','होल्ड सूची')}</h2>
+              <div className="flex gap-2 mb-4">
+                <input placeholder={t('Add new hold item...','नया होल्ड आइटम जोड़ें...')} className="flex-1 p-3 bg-slate-50 rounded-xl border-none text-sm" id="hold-new-input" />
+                <input placeholder={t('Icon (emoji)','Icon (इमोजी)')} id="hold-new-icon" className="w-24 p-3 bg-slate-50 rounded-xl border-none text-sm" />
+                <button onClick={() => { const el = document.getElementById('hold-new-input'); const ic = document.getElementById('hold-new-icon'); if (el) { addHoldItem(el.value, ic ? ic.value : '📝'); el.value=''; if (ic) ic.value=''; } }} className="bg-indigo-600 p-3 rounded-xl text-white shadow-md">{t('Add','जोड़ें')}</button>
+              </div>
+              <div className="grid gap-3">
+                {holdItems.map(item => (
+                  <div key={item.id} className="flex items-center gap-4 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="w-10 h-10 bg-white rounded-md flex items-center justify-center text-lg">{item.icon}</div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-bold text-slate-800">{item.title}</h3>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => { const newTitle = prompt(t('Edit title','शीर्षक संपादित करें'), item.title); if (newTitle !== null) updateHoldItem(item.id, { title: newTitle }); }} className="p-2 bg-white rounded">Edit</button>
+                      <button onClick={() => { const newIcon = prompt(t('Update icon (emoji)','इकॉन अपडेट करें (इमोजी)'), item.icon); if (newIcon !== null) updateHoldItem(item.id, { icon: newIcon }); }} className="p-2 bg-white rounded">Icon</button>
+                      <button onClick={() => removeHoldItem(item.id)} className="p-2 bg-red-100 text-red-600 rounded">Delete</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </section>
           </>
@@ -539,11 +656,19 @@ const App = () => {
       {showOnboarding && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70">
           <div className="bg-white w-full max-w-md rounded-2xl p-6 text-center">
-            <h2 className="text-lg font-bold mb-2">Welcome to Mind Manager</h2>
-            <p className="text-sm text-slate-600 mb-4">A focused place to manage your day: one task, brain dump, and short pomodoro sessions.</p>
-            <div className="flex gap-2 justify-center">
-              <button onClick={() => { setShowOnboarding(false); localStorage.setItem('dmm_seen_onboarding', '1'); }} className="px-4 py-2 bg-indigo-600 text-white rounded">Get Started</button>
-              <button onClick={() => { setShowOnboarding(false); localStorage.setItem('dmm_seen_onboarding', '1'); }} className="px-4 py-2 bg-slate-100 rounded">Maybe Later</button>
+            <h2 className="text-lg font-bold mb-2">{t('Welcome to Mind Manager','माइंड मैनेजर में आपका स्वागत है')}</h2>
+            <p className="text-sm text-slate-600 mb-4">{t('A focused place to manage your day: one task, brain dump, and short pomodoro sessions.','आपके दिन पर ध्यान केंद्रित करने के लिए: एक कार्य, ब्रेन डंप, और छोटे पोमोडोरो सत्र।')}</p>
+            <div className="space-y-3 text-left">
+              <label className="text-sm font-bold">{t('Your name','आपका नाम')}</label>
+              <input className="w-full p-3 rounded" defaultValue={username} id="onboard-name" placeholder={t('Enter your name','अपना नाम दर्ज करें')} />
+              <label className="text-sm font-bold">{t('Language / भाषा')}</label>
+              <div className="flex gap-2">
+                <button onClick={() => { document.getElementById('onboard-name') && completeOnboarding(document.getElementById('onboard-name').value, 'en'); }} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded">{t('English','English')}</button>
+                <button onClick={() => { document.getElementById('onboard-name') && completeOnboarding(document.getElementById('onboard-name').value, 'hi'); }} className="flex-1 px-4 py-2 bg-slate-100 rounded">{t('Hindi','हिन्दी')}</button>
+              </div>
+              <div className="flex gap-2 justify-center mt-3">
+                <button onClick={() => { setShowOnboarding(false); localStorage.setItem('dmm_seen_onboarding', '1'); }} className="px-4 py-2 bg-slate-200 rounded">{t('Maybe Later','बाद में')}</button>
+              </div>
             </div>
           </div>
         </div>
