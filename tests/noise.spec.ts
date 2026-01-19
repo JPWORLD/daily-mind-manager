@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test('add and delete noise items', async ({ page }) => {
   await page.goto('/');
-  // dismiss onboarding if present
-  const getStarted = page.getByRole('button', { name: 'Get Started' });
+  // dismiss onboarding if present (Maybe Later / English buttons)
+  const getStarted = page.getByRole('button', { name: /Get Started|Maybe Later|English|Hindi/ });
   if (await getStarted.count() > 0) await getStarted.click();
 
   const noiseInput = page.getByPlaceholder('Jo bhi pareshan kare likh do...');

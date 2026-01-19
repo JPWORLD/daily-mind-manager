@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 
 test('pomodoro start and pause', async ({ page }) => {
   await page.goto('/');
-  // dismiss onboarding if present
-  const getStarted = page.getByRole('button', { name: 'Get Started' });
+  // dismiss onboarding if present (Maybe Later / English buttons)
+  const getStarted = page.getByRole('button', { name: /Get Started|Maybe Later|English|Hindi/ });
   if (await getStarted.count() > 0) await getStarted.click();
 
   // open pomodoro (it is lazy-loaded, ensure it loads)
