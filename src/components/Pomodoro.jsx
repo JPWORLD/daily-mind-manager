@@ -336,7 +336,7 @@ export default function Pomodoro({ onSessionComplete, t: _t }) {
                 <select value={alarm} onChange={(e)=>{ setAlarm(e.target.value); try { localStorage.setItem('pomoAlarm', e.target.value); } catch(e){} }} className="p-1 rounded text-xs">
                   <option value="beep">{t('Beep','बिप')}</option>
                   <option value="chime">{t('Chime','घंटी')}</option>
-                  <option value="custom">{t('Custom','कस्टम')}</option>
+                  <option value="custom">{customAlarmName ? `${t('Custom','कस्टम')} (${customAlarmName})` : t('Custom','कस्टम')}</option>
                 </select>
                 <div className="flex items-center gap-2">
                   <input type="range" min="0" max="1" step="0.01" value={alarmVol} onChange={(e)=>{ const v = Number(e.target.value); setAlarmVol(v); try{ localStorage.setItem('pomoAlarmVol', String(v)); }catch(e){} }} />
