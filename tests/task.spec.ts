@@ -1,12 +1,11 @@
 import { test, expect } from '@playwright/test';
 
 test('add and toggle today task persists', async ({ page }) => {
+  // ensure onboarding/language are set before any app script runs
+  await page.addInitScript(() => { localStorage.setItem('dmm_seen_onboarding', '1'); localStorage.setItem('dmm_username', 'Test'); localStorage.setItem('dmm_lang', 'hi'); });
   await page.goto('/');
-  // mark onboarding as seen to avoid modal blocking the UI during tests
-  await page.evaluate(() => { localStorage.setItem('dmm_seen_onboarding', '1'); localStorage.setItem('dmm_username', 'Test'); localStorage.setItem('dmm_lang', 'hi'); });
-  await page.reload();
 
-  const input = page.getByPlaceholder('Aaj ka sabse zaruri kaam...');
+  const input = page.getByPlaceholder('आज का सबसे जरूरी काम...');
   await input.fill('Buy milk');
 
   // after filling, toggle button should appear
@@ -19,6 +18,6 @@ test('add and toggle today task persists', async ({ page }) => {
 
   // reload and ensure task & done state persisted
   await page.reload();
-  await expect(page.getByPlaceholder('Aaj ka sabse zaruri kaam...')).toHaveValue('Buy milk');
+  await expect(page.getByPlaceholder('आज का सबसे जरूरी काम...')).toHaveValue('Buy milk');
   await expect(page.getByText('Kaam Ho Gaya!')).toBeVisible();
 });
