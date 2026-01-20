@@ -4,32 +4,81 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Admin — Daily Mind Manager</title>
-    <style>body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:24px}label{display:block;margin-top:12px}input,textarea{width:100%;padding:8px;margin-top:6px}</style>
+    <style>
+      body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:24px;max-width:800px;margin:0 auto;background:#f8fafc}
+      .login{display:block}
+      .panel{display:none}
+      .post{margin-bottom:20px;padding:16px;border:1px solid #ddd;border-radius:8px;background:#fff}
+      .post h3{margin:0 0 8px}
+      .post p{margin:0 0 8px}
+      button{margin-right:8px;padding:8px 12px;border:none;border-radius:4px;cursor:pointer}
+      .save{background:#007bff;color:white}
+      .delete{background:#dc3545;color:white}
+      .edit{background:#ffc107;color:black}
+      label{display:block;margin-top:12px}
+      input,textarea{width:100%;padding:8px;margin-top:6px;border:1px solid #ccc;border-radius:4px}
+      .out{margin-top:12px;padding:8px;border-radius:4px}
+      .success{background:#d4edda;color:#155724}
+      .error{background:#f8d7da;color:#721c24}
+    </style>
   </head>
   <body>
-    <h1>Admin: Create Post</h1>
-    <div>
-      <label>Admin Token<input id="admintoken" placeholder="paste admin token"/></label>
-      <button id="store">Store Token</button>
-      <hr />
+    <div id="login" class="login">
+      <h1>Admin Login</h1>
+      <label>Username<input id="username"/></label>
+      <label>Password<input id="password" type="password"/></label>
+      <button id="loginBtn">Login</button>
+      <div id="loginOut"></div>
+    </div>
+    <div id="panel" class="panel">
+      <h1>Blog Admin Panel</h1>
+      <h2>Create New Post</h2>
       <label>Title<input id="title"/></label>
       <label>Slug<input id="slug"/></label>
       <label>Image URL<input id="image"/></label>
       <label>Content<textarea id="content" rows="8"></textarea></label>
       <label><input type="checkbox" id="published"/> Published</label>
-      <button id="save">Save</button>
-      <div id="out" style="margin-top:12px;color:green"></div>
+      <button id="save" class="save">Save Post</button>
+      <div id="out"></div>
+      <hr />
+      <h2>Existing Posts</h2>
+      <div id="posts"></div>
     </div>
     <script>
-      // store token in localStorage for convenience (unprotected admin UI)
-      document.getElementById('store').addEventListener('click', ()=>{
-        const t = document.getElementById('admintoken').value.trim();
-        const out = document.getElementById('out');
-        if (t) { localStorage.setItem('dmm_admin_token', t); out.innerText = 'Admin token stored locally'; out.style.color='green'; } else { out.innerText = 'Please provide a token'; out.style.color='red'; }
+      const loginDiv = document.getElementById('login');
+      const panelDiv = document.getElementById('panel');
+      const loginOut = document.getElementById('loginOut');
+
+      document.getElementById('loginBtn').addEventListener('click', ()=>{
+        const user = document.getElementById('username').value;
+        const pass = document.getElementById('password').value;
+        if (user === 'admin' && pass === 'admin123') {
+          localStorage.setItem('dmm_admin_token', 'dev-admin-token');
+          loginDiv.style.display = 'none';
+          panelDiv.style.display = 'block';
+          loadPosts();
+        } else {
+          loginOut.innerHTML = '<div class="error">Invalid credentials</div>';
+        }
       });
 
       async function getToken() {
         return localStorage.getItem('dmm_admin_token') || '';
+      }
+
+      async function loadPosts() {
+        const res = await fetch('/api/posts');
+        const posts = await res.json();
+        const postsDiv = document.getElementById('posts');
+        postsDiv.innerHTML = posts.map(p => `
+          <div class="post">
+            <h3>${p.title}</h3>
+            <p>Slug: ${p.slug}</p>
+            <p>Published: ${p.published ? 'Yes' : 'No'}</p>
+            <button class="edit" onclick="editPost(${p.id})">Edit</button>
+            <button class="delete" onclick="deletePost(${p.id})">Delete</button>
+          </div>
+        `).join('');
       }
 
       document.getElementById('save').addEventListener('click', async ()=>{
@@ -45,8 +94,60 @@
         if (token) headers['Authorization'] = 'Bearer ' + token;
         const res = await fetch('/api/posts', { method: 'POST', body: JSON.stringify(data), headers });
         const json = await res.json();
-        if (res.ok) { document.getElementById('out').innerText = 'Saved: ' + json.slug; } else { document.getElementById('out').innerText = 'Error: ' + (json.error || res.statusText); }
+        if (res.ok) {
+          document.getElementById('out').innerHTML = '<div class="success">Saved: ' + json.slug + '</div>';
+          loadPosts();
+        } else {
+          document.getElementById('out').innerHTML = '<div class="error">Error: ' + (json.error || res.statusText) + '</div>';
+        }
       });
+
+      async function editPost(id) {
+        // For simplicity, fetch and populate form
+        const res = await fetch(`/api/posts/${id}`);
+        const post = await res.json();
+        document.getElementById('title').value = post.title;
+        document.getElementById('slug').value = post.slug;
+        document.getElementById('image').value = post.image || '';
+        document.getElementById('content').value = post.content;
+        document.getElementById('published').checked = post.published;
+        // Change save to update
+        document.getElementById('save').innerText = 'Update Post';
+        document.getElementById('save').onclick = () => updatePost(id);
+      }
+
+      async function updatePost(id) {
+        const data = {
+          title: document.getElementById('title').value,
+          slug: document.getElementById('slug').value,
+          image: document.getElementById('image').value,
+          content: document.getElementById('content').value,
+          published: document.getElementById('published').checked
+        };
+        const token = await getToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const res = await fetch(`/api/posts/${id}`, { method: 'PUT', body: JSON.stringify(data), headers });
+        const json = await res.json();
+        if (res.ok) {
+          document.getElementById('out').innerHTML = '<div class="success">Updated: ' + json.slug + '</div>';
+          loadPosts();
+        } else {
+          document.getElementById('out').innerHTML = '<div class="error">Error: ' + (json.error || res.statusText) + '</div>';
+        }
+      }
+
+      async function deletePost(id) {
+        const token = await getToken();
+        const headers = {};
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const res = await fetch(`/api/posts/${id}`, { method: 'DELETE', headers });
+        if (res.ok) {
+          loadPosts();
+        } else {
+          alert('Delete failed');
+        }
+      }
     </script>
   </body>
 </html>

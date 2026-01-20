@@ -50,7 +50,7 @@ const App = () => {
     { id: 4, title: "iPhone & Investments", status: "Hold", icon: "Heart" }
   ]);
   const [aqiData, setAqiData] = useState(null);
-  const [noiseInput, setNoiseInput] = useState("");
+  const [blogPosts, setBlogPosts] = useState([]);
 
   const fileInputRef = useRef(null);
 
@@ -132,7 +132,18 @@ const App = () => {
 
   useEffect(() => {
     if (activeTab === 'aqi') fetchAQI();
+    if (activeTab === 'inspire') fetchBlogPosts();
   }, [activeTab]);
+
+  const fetchBlogPosts = async () => {
+    try {
+      const res = await fetch('/api/posts');
+      const posts = await res.json();
+      setBlogPosts(posts);
+    } catch (err) {
+      console.error('Blog fetch error', err);
+    }
+  };
 
   // Actions
   const addNoise = () => {
@@ -253,6 +264,12 @@ const App = () => {
             className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'aqi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
           >
             Air Quality
+          </button>
+          <button 
+            onClick={() => setActiveTab('inspire')}
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'inspire' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
+          >
+            Inspire
           </button>
         </div>
 
@@ -393,6 +410,26 @@ const App = () => {
               </div>
             ) : (
               <p className="text-center text-slate-500">Loading AQI data...</p>
+            )}
+          </section>
+        )}
+
+        {activeTab === 'inspire' && (
+          <section className="animate-in fade-in slide-in-from-bottom-2">
+            <h2 className="text-lg font-bold text-slate-900 mb-4 text-center">Inspiration from Our Blog</h2>
+            {blogPosts.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                {blogPosts.map(post => (
+                  <a key={post.id} href={`/blog/${post.slug}.html`} className="block bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 no-underline text-inherit">
+                    <img src={post.image || '/pwa-192.png'} alt={post.title} className="w-full h-32 object-cover rounded mb-3" />
+                    <h3 className="text-md font-bold text-slate-800 mb-2">{post.title}</h3>
+                    <p className="text-sm text-slate-600 mb-2">{post.content.substring(0, 100)}...</p>
+                    <div className="text-xs text-slate-400">{new Date(post.createdAt).toLocaleDateString()}</div>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-slate-500">Loading blog posts...</p>
             )}
           </section>
         )}
