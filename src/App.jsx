@@ -690,7 +690,7 @@ const App = () => {
 
       {/* Floating Pomodoro widget toggle */}
       <div className="fixed bottom-6 right-6 z-50">
-        <FloatingPomodoro />
+        <FloatingPomodoro accent={accentBg} accentText={accentText} accentLight={accentLight} />
       </div>
 
       {/* Settings Modal */}
@@ -937,7 +937,7 @@ function ScorecardContent({ rangeKey, computeStats }) {
 }
 
 // Floating Pomodoro quick widget
-function FloatingPomodoro() {
+function FloatingPomodoro({ accent, accentText, accentLight }) {
   const [open, setOpen] = useState(false);
   return (
     <div>
@@ -945,12 +945,12 @@ function FloatingPomodoro() {
         <div className="mb-3">
           <div className="bg-white rounded-2xl p-2 shadow">
             <Suspense fallback={<div className="p-2">Loading...</div>}>
-              <Pomodoro compact={true} t={(a,b)=>a} accent={accentBg} accentText={accentText} accentLight={accentLight} />
+              <Pomodoro compact={true} t={(a,b)=>a} accent={accent} accentText={accentText} accentLight={accentLight} />
             </Suspense>
           </div>
         </div>
       )}
-      <button onClick={() => setOpen(o=>!o)} className={`w-12 h-12 rounded-full ${accentBg} text-white shadow-lg flex items-center justify-center`}>{open? '✕' : '🍅'}</button>
+      <button onClick={() => setOpen(o=>!o)} className={`w-12 h-12 rounded-full ${accent} text-white shadow-lg flex items-center justify-center`}>{open? '✕' : '🍅'}</button>
     </div>
   );
 }
