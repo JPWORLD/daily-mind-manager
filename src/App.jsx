@@ -39,6 +39,8 @@ const App = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, synced, error
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showScorecard, setShowScorecard] = useState(false);
+  const [scoreRange, setScoreRange] = useState('7d');
   const [username, setUsername] = useState(localStorage.getItem('dmm_username') || '');
   const [lang, setLang] = useState(localStorage.getItem('dmm_lang') || 'en'); // 'en' | 'hi'
   const [temperature, setTemperature] = useState(null);
@@ -308,7 +310,11 @@ const App = () => {
 
   // Export/Backup
   const exportData = () => {
-    const dataStr = JSON.stringify({ mood, todayTask, isTaskDone, noiseList, holdItems });
+    // include additional app metadata: pomo history, settings, theme, user
+    const pomoHistory = (() => { try { return JSON.parse(localStorage.getItem('pomo_history') || '[]'); } catch { return []; } })();
+    const pomoState = (() => { try { return JSON.parse(localStorage.getItem('pomoState') || '{}'); } catch { return {}; } })();
+    const meta = { themeMode, username, lang, lastPomodoroCount: localStorage.getItem('lastPomodoroCount') || null };
+    const dataStr = JSON.stringify({ mood, todayTask, isTaskDone, noiseList, holdItems, pomoHistory, pomoState, meta });
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     const exportFileDefaultName = `mind_manager_backup_${new Date().toISOString().split('T')[0]}.json`;
     
@@ -330,6 +336,12 @@ const App = () => {
         setIsTaskDone(json.isTaskDone || false);
         setNoiseList(json.noiseList || []);
         setHoldItems(json.holdItems || []);
+        // restore pomo history and state
+        try { if (json.pomoHistory) localStorage.setItem('pomo_history', JSON.stringify(json.pomoHistory)); } catch(e){}
+        try { if (json.pomoState) localStorage.setItem('pomoState', JSON.stringify(json.pomoState)); } catch(e){}
+        try { if (json.meta && json.meta.themeMode) { setThemeMode(json.meta.themeMode); localStorage.setItem('dmm_theme', json.meta.themeMode); } } catch(e){}
+        try { if (json.meta && json.meta.username) { setUsername(json.meta.username); localStorage.setItem('dmm_username', json.meta.username); } } catch(e){}
+        try { if (json.meta && json.meta.lang) { setLang(json.meta.lang); localStorage.setItem('dmm_lang', json.meta.lang); } } catch(e){}
         saveData(json);
         setShowSettings(false);
       } catch (err) {
@@ -418,6 +430,20 @@ const App = () => {
 
   // Simple translation helper
   const t = (en, hi) => (lang === 'hi' ? (hi || en) : en);
+
+  // compute scorecard stats for given rangeStart (Date)
+  const computeStats = (rangeStart) => {
+    const raw = localStorage.getItem('pomo_history');
+    let hist = [];
+    try { hist = raw ? JSON.parse(raw) : []; } catch(e) { hist = []; }
+    const from = rangeStart ? new Date(rangeStart) : null;
+    const filtered = from ? hist.filter(h => new Date(h.ts) >= from) : hist;
+    const total = filtered.length;
+    const byDay = {};
+    filtered.forEach(h => { const d = new Date(h.ts).toISOString().slice(0,10); byDay[d] = (byDay[d]||0)+1; });
+    const daysActive = Object.keys(byDay).length;
+    return { total, daysActive, byDay };
+  };
 
   // family corner rotating messages
   const familyMessages = [
@@ -600,9 +626,9 @@ const App = () => {
                       <h3 className="text-sm font-bold text-slate-800">{item.title}</h3>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => { const newTitle = prompt(t('Edit title','शीर्षक संपादित करें'), item.title); if (newTitle !== null) updateHoldItem(item.id, { title: newTitle }); }} className="p-2 bg-white rounded">Edit</button>
-                      <button onClick={() => { const newIcon = prompt(t('Update icon (emoji)','इकॉन अपडेट करें (इमोजी)'), item.icon); if (newIcon !== null) updateHoldItem(item.id, { icon: newIcon }); }} className="p-2 bg-white rounded">Icon</button>
-                      <button onClick={() => removeHoldItem(item.id)} className="p-2 bg-red-100 text-red-600 rounded">Delete</button>
+                      <button onClick={() => { const newTitle = prompt(t('Edit title','शीर्षक संपादित करें'), item.title); if (newTitle !== null) updateHoldItem(item.id, { title: newTitle }); }} className="p-2 bg-white rounded">{t('Edit','संपादित')}</button>
+                      <button onClick={() => { const newIcon = prompt(t('Update icon (emoji)','इकॉन अपडेट करें (इमोजी)'), item.icon); if (newIcon !== null) updateHoldItem(item.id, { icon: newIcon }); }} className="p-2 bg-white rounded">{t('Icon','इकॉन')}</button>
+                      <button onClick={() => removeHoldItem(item.id)} className="p-2 bg-red-100 text-red-600 rounded">{t('Delete','हटा दें')}</button>
                     </div>
                   </div>
                 ))}
@@ -638,6 +664,11 @@ const App = () => {
           </section>
         )}
       </main>
+
+      {/* Floating Pomodoro widget toggle */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <FloatingPomodoro />
+      </div>
 
       {/* Settings Modal */}
       {showSettings && (
@@ -704,6 +735,13 @@ const App = () => {
                 </div>
               </div>
 
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Scorecard</h3>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowScorecard(true)} className="flex-1 p-2 bg-white border rounded-2xl">Show Scorecard</button>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Notifications</h3>
                 <div className="flex gap-2">
@@ -728,6 +766,24 @@ const App = () => {
                 Device Hash: {user?.uid ? user.uid.substring(0, 12) + '...' : 'Connecting...'}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showScorecard && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/40">
+          <div className="bg-white w-full max-w-lg rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">Scorecard & Achievements</h3>
+              <button onClick={() => setShowScorecard(false)} className="p-2">Close</button>
+            </div>
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => setScoreRange('7d')} className="px-3 py-2 bg-indigo-50 rounded">1 week</button>
+              <button onClick={() => setScoreRange('30d')} className="px-3 py-2 bg-indigo-50 rounded">1 month</button>
+              <button onClick={() => setScoreRange('90d')} className="px-3 py-2 bg-indigo-50 rounded">3 months</button>
+              <button onClick={() => setScoreRange('180d')} className="px-3 py-2 bg-indigo-50 rounded">6 months</button>
+            </div>
+            <ScorecardContent rangeKey={scoreRange} computeStats={computeStats} />
           </div>
         </div>
       )}
@@ -776,3 +832,48 @@ const App = () => {
 };
 
 export default App;
+
+// Small helper component for scorecard content
+function ScorecardContent({ rangeKey, computeStats }) {
+  const getFrom = (k) => {
+    const now = new Date();
+    if (k === '7d') { const d = new Date(now); d.setDate(now.getDate() - 7); return d; }
+    if (k === '30d') { const d = new Date(now); d.setDate(now.getDate() - 30); return d; }
+    if (k === '90d') { const d = new Date(now); d.setDate(now.getDate() - 90); return d; }
+    if (k === '180d') { const d = new Date(now); d.setDate(now.getDate() - 180); return d; }
+    return null;
+  };
+  const from = getFrom(rangeKey);
+  const stats = computeStats(from);
+  return (
+    <div>
+      <div className="mb-2">Total sessions: <strong>{stats.total}</strong></div>
+      <div className="mb-2">Active days: <strong>{stats.daysActive}</strong></div>
+      <div className="text-xs text-slate-500">Daily breakdown (date: sessions):</div>
+      <div className="mt-2 max-h-40 overflow-auto text-sm border rounded p-2 bg-slate-50">
+        {Object.entries(stats.byDay).length === 0 ? <div className="italic text-[12px] text-slate-400">No sessions in range</div> : Object.entries(stats.byDay).sort((a,b)=>b[0].localeCompare(a[0])).map(([d,c])=> (
+          <div key={d} className="flex justify-between"><span>{d}</span><span>{c}</span></div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Floating Pomodoro quick widget
+function FloatingPomodoro() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      {open && (
+        <div className="mb-3">
+          <div className="bg-white rounded-2xl p-2 shadow">
+            <Suspense fallback={<div className="p-2">Loading...</div>}>
+              <Pomodoro compact={true} t={(a,b)=>a} />
+            </Suspense>
+          </div>
+        </div>
+      )}
+      <button onClick={() => setOpen(o=>!o)} className="w-12 h-12 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center">{open? '✕' : '🍅'}</button>
+    </div>
+  );
+}

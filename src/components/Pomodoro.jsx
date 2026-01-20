@@ -13,7 +13,7 @@ function formatTime(secs) {
   return `${m}:${s}`;
 }
 
-export default function Pomodoro({ onSessionComplete, t: _t }) {
+export default function Pomodoro({ onSessionComplete, t: _t, compact=false }) {
   const [mode, setMode] = useState('work'); // work, shortBreak, longBreak
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [remaining, setRemaining] = useState(DEFAULT_CONFIG.work);
@@ -178,6 +178,13 @@ export default function Pomodoro({ onSessionComplete, t: _t }) {
     if (mode === 'work') {
       const nextCount = completedSessions + 1;
       setCompletedSessions(nextCount);
+      try {
+        // record history entry
+        const raw = localStorage.getItem('pomo_history');
+        const hist = raw ? JSON.parse(raw) : [];
+        hist.push({ ts: new Date().toISOString(), duration: config.work });
+        localStorage.setItem('pomo_history', JSON.stringify(hist));
+      } catch (e) {}
       if (onSessionComplete) onSessionComplete(nextCount);
       if (nextCount % config.sessionsBeforeLongBreak === 0) {
         setMode('longBreak');
@@ -300,11 +307,11 @@ export default function Pomodoro({ onSessionComplete, t: _t }) {
     };
 
   return (
-    <div className="bg-white p-4 rounded-2xl shadow mt-4">
+    <div className={`bg-white p-4 rounded-2xl shadow mt-4 ${compact?'w-48 p-3':''}`}>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-sm font-bold">Pomodoro</h3>
-          <p className="text-xs text-slate-400">Work focused sessions with short breaks</p>
+          <h3 className="text-sm font-bold">{compact ? 'Pomodoro' : 'Pomodoro'}</h3>
+          {!compact && <p className="text-xs text-slate-400">Work focused sessions with short breaks</p>}
         </div>
         <div className="text-xs text-slate-500">Completed: <span className="font-bold">{completedSessions}</span></div>
       </div>
@@ -325,22 +332,23 @@ export default function Pomodoro({ onSessionComplete, t: _t }) {
         </div>
         <div className="flex gap-2">
           {!running ? (
-            <button onClick={start} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Start</button>
+            <button onClick={start} className={`px-3 py-1 rounded-lg ${compact?'text-sm px-2':'bg-indigo-600 text-white'}`}>{compact? 'Start' : 'Start'}</button>
           ) : (
-            <button onClick={pause} className="px-4 py-2 bg-yellow-400 text-white rounded-lg">Pause</button>
+            <button onClick={pause} className={`px-3 py-1 rounded-lg ${compact?'text-sm px-2':'bg-yellow-400 text-white'}`}>{compact? 'Pause' : 'Pause'}</button>
           )}
-          <button onClick={reset} className="px-4 py-2 bg-slate-100 rounded-lg">Reset</button>
-          <button onClick={requestNotification} className="px-3 py-2 bg-slate-100 rounded-lg text-xs">Notify</button>
+          <button onClick={reset} className={`px-3 py-1 rounded-lg ${compact?'text-sm px-2':'bg-slate-100'}`}>{compact? 'Reset' : 'Reset'}</button>
         </div>
         <div className="flex gap-2 text-xs mt-2">
           <button onClick={() => { setMode('work'); setRemaining(config.work); setRunning(false); }} className={`px-2 py-1 rounded ${mode==='work'?'bg-indigo-100':'bg-slate-50'}`}>Work</button>
           <button onClick={() => { setMode('shortBreak'); setRemaining(config.shortBreak); setRunning(false); }} className={`px-2 py-1 rounded ${mode==='shortBreak'?'bg-indigo-100':'bg-slate-50'}`}>Short</button>
           <button onClick={() => { setMode('longBreak'); setRemaining(config.longBreak); setRunning(false); }} className={`px-2 py-1 rounded ${mode==='longBreak'?'bg-indigo-100':'bg-slate-50'}`}>Long</button>
         </div>
-        <div className="w-full mt-3 flex items-center justify-between">
-            <button onClick={() => setShowSettings(s => !s)} className="text-xs text-indigo-600">{showSettings ? t('Close','बंद') : t('Settings','सेटिंग्स')}</button>
-            <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={soundEnabled} onChange={(e)=>{ setSoundEnabled(e.target.checked); localStorage.setItem('pomoState', JSON.stringify({ mode, remaining, completedSessions, config, soundEnabled: e.target.checked })); }} /> {t('Sound','ध्वनि')}</label>
-        </div>
+        {!compact && (
+          <div className="w-full mt-3 flex items-center justify-between">
+              <button onClick={() => setShowSettings(s => !s)} className="text-xs text-indigo-600">{showSettings ? t('Close','बंद') : t('Settings','सेटिंग्स')}</button>
+              <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={soundEnabled} onChange={(e)=>{ setSoundEnabled(e.target.checked); localStorage.setItem('pomoState', JSON.stringify({ mode, remaining, completedSessions, config, soundEnabled: e.target.checked })); }} /> {t('Sound','ध्वनि')}</label>
+          </div>
+        )}
         {showSettings && (
           <div className="w-full mt-3 p-3 bg-slate-50 rounded-lg border">
             <div className="grid grid-cols-3 gap-2 text-xs">
