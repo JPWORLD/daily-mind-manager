@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "title": "cli-test",
+    "slug": "cli-e2e-1768896690",
+    "content": "x",
+    "published": true,
+    "createdAt": "2026-01-20T08:11:30.195Z",
+    "updatedAt": "2026-01-20T08:11:30.195Z"
+  },
+  {
+    "id": 2,
+    "title": "E2E Test Post",
+    "slug": "e2e-1768896699274",
+    "content": "This is a test post created during E2E.",
+    "published": true,
+    "createdAt": "2026-01-20T08:11:39.280Z",
+    "updatedAt": "2026-01-20T08:11:39.280Z"
+  }
+]

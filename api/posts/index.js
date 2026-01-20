@@ -56,24 +56,39 @@ module.exports = async (req, res) => {
         res.statusCode = 401; res.end(JSON.stringify({ error: 'Unauthorized' })); return;
       }
     }
-    // Basic create
-    let body = '';
-    req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', async () => {
+    // Basic create - support both raw stream and express.json() parsed body
+    const handleCreate = async (data) => {
       try {
-        const { title, slug, content, published } = JSON.parse(body);
+        const { title, slug, content, published, image } = data;
         if (prisma) {
-          const post = await prisma.post.create({ data: { title, slug, content, published: !!published } });
+          const post = await prisma.post.create({ data: { title, slug, content, published: !!published, image } });
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(post));
         } else {
           const posts = readPosts();
           const id = (posts.length ? posts[posts.length-1].id + 1 : 1);
-          const entry = { id, title, slug, content, published: !!published, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+          const entry = { id, title, slug, content, published: !!published, image, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
           posts.push(entry); writePosts(posts);
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(entry));
         }
+      } catch (e) {
+        res.statusCode = 500;
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    };
+
+    if (req.body && Object.keys(req.body).length) {
+      await handleCreate(req.body);
+      return;
+    }
+
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const parsed = body ? JSON.parse(body) : {};
+        await handleCreate(parsed);
       } catch (e) {
         res.statusCode = 500;
         res.end(JSON.stringify({ error: e.message }));

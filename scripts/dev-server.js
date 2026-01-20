@@ -32,6 +32,9 @@ app.delete('/api/posts/:id', (req, res) => {
 // serve static files from dist/public
 const staticDir = path.resolve(__dirname, '..', 'dist');
 app.use(express.static(staticDir));
+// also serve raw files from `public/` for dev convenience (admin.html, privacy pages)
+const publicDir = path.resolve(__dirname, '..', 'public');
+app.use(express.static(publicDir));
 
 app.listen(port, () => {
   console.log(`Dev server listening on http://localhost:${port}`);

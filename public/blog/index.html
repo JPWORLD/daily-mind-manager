@@ -9,10 +9,57 @@
   </head>
   <body>
     <h1>Daily Mind Manager — Blog</h1>
-    <ul>
-      <li><a href="/blog/post-1.html">How to get started with 25-minute Pomodoros</a></li>
-      <li><a href="/blog/post-2.html">Small habits that compound — a 30 day plan</a></li>
-      <li><a href="/blog/post-3.html">Using ambient sounds to improve focus</a></li>
-    </ul>
+
+    <div id="cards" class="cards">
+      <!-- Cards will be loaded here -->
+    </div>
+
+    <script>
+      async function loadPosts() {
+        try {
+          const res = await fetch('/api/posts');
+          const posts = await res.json();
+          const cardsEl = document.getElementById('cards');
+          cardsEl.innerHTML = posts.map(post => `
+            <a class="card" href="/blog/${post.slug}.html">
+              <img class="card-img" src="${post.image || '/pwa-192.png'}" alt="${post.title}" />
+              <div class="card-body">
+                <h2 class="card-title">${post.title}</h2>
+                <p class="card-excerpt">${post.content.substring(0, 100)}...</p>
+                <div class="card-meta">${new Date(post.createdAt).toLocaleDateString()} · 4 min read</div>
+              </div>
+            </a>
+          `).join('');
+        } catch (e) {
+          console.error('Failed to load posts', e);
+        }
+      }
+      loadPosts();
+    </script>
+
+    <style>
+      :root{--card-bg:#fff;--muted:#64748b}
+      body{background:#f8fafc}
+      .cards{max-width:760px;margin:16px auto;padding:0 12px}
+      .card{display:flex;align-items:flex-start;gap:12px;background:var(--card-bg);border-radius:12px;padding:12px;box-shadow:0 6px 18px rgba(2,6,23,0.06);text-decoration:none;color:inherit;margin-bottom:12px}
+      .card-img{width:88px;height:88px;object-fit:cover;border-radius:8px;flex:0 0 88px}
+      .card-body{flex:1;min-width:0}
+      .card-title{font-size:16px;margin:0 0 6px 0;color:#0f172a}
+      .card-excerpt{font-size:13px;margin:0 0 8px 0;color:var(--muted)}
+      .card-meta{font-size:12px;color:var(--muted)}
+
+      /* mobile adjustments similar to jionews: tighter spacing and full-width image on very small screens */
+      @media (max-width:420px){
+        .card{gap:10px;padding:10px}
+        .card-img{width:84px;height:84px;flex:0 0 84px}
+        .card-title{font-size:15px}
+      }
+
+      /* larger screens: constrain content and make image slightly larger */
+      @media (min-width:900px){
+        .cards{max-width:980px}
+        .card-img{width:120px;height:80px;flex:0 0 120px;border-radius:10px}
+      }
+    </style>
   </body>
 </html>
