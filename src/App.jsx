@@ -23,6 +23,7 @@ import {
   Check
 } from 'lucide-react';
 const Pomodoro = React.lazy(() => import('./components/Pomodoro'));
+const InspirationCard = React.lazy(() => import('./components/InspirationCard'));
 
 // Read Firebase config from Vite env (set VITE_FIREBASE_CONFIG to JSON string)
 const firebaseConfig = (() => {
@@ -36,6 +37,8 @@ const App = () => {
   const [notifPermission, setNotifPermission] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'default');
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('daily');
+  const [inspirations, setInspirations] = useState(() => { try { return JSON.parse(localStorage.getItem('inspirations') || '[]'); } catch { return []; } });
+  const [subscribers, setSubscribers] = useState(() => { try { return JSON.parse(localStorage.getItem('subscribers') || '[]'); } catch { return []; } });
   const [showSettings, setShowSettings] = useState(false);
   const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, synced, error
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -104,6 +107,7 @@ const App = () => {
         if (s.isTaskDone !== undefined) setIsTaskDone(s.isTaskDone);
         if (s.noiseList) setNoiseList(s.noiseList);
         if (s.holdItems) setHoldItems(s.holdItems);
+        if (s.inspirations) { setInspirations(s.inspirations); localStorage.setItem('inspirations', JSON.stringify(s.inspirations)); }
       }
       // ensure onboarding appears if username empty (do not rely on seen flag)
       if (!localStorage.getItem('dmm_username') || !localStorage.getItem('dmm_username').trim()) {
@@ -112,6 +116,19 @@ const App = () => {
     } catch (e) {
       console.error('load local state failed', e);
     }
+    // seed a few inspirations if none exist
+    try {
+      const cur = JSON.parse(localStorage.getItem('inspirations') || '[]');
+      if (!cur || cur.length === 0) {
+        const seed = [
+          { id: Date.now()+1, title: 'Take one small step today — it compounds', image: '/pwa-192.svg' },
+          { id: Date.now()+2, title: 'Focus on process, not perfection', image: '/pwa-192.svg' },
+          { id: Date.now()+3, title: 'A short break can reboot your focus', image: '/pwa-192.svg' }
+        ];
+        setInspirations(seed);
+        localStorage.setItem('inspirations', JSON.stringify(seed));
+      }
+    } catch (e) {}
   }, []);
 
   // load greetings (try remote && cache fallback) and rotate index
@@ -509,6 +526,30 @@ const App = () => {
     return { total, daysActive, byDay };
   };
 
+  const removeInspiration = (id) => {
+    const next = inspirations.filter(i => i.id !== id);
+    setInspirations(next);
+    localStorage.setItem('inspirations', JSON.stringify(next));
+  };
+
+  const subscribeToInspiration = (id) => {
+    try {
+      const email = window.prompt('Enter email to subscribe to inspirations (MVP)');
+      if (!email) return;
+      const next = Array.from(new Set([...subscribers, email]));
+      setSubscribers(next);
+      localStorage.setItem('subscribers', JSON.stringify(next));
+      alert('Thanks — subscribed');
+    } catch (e) { console.error(e); }
+  };
+
+  const addInspiration = (title, image) => {
+    const item = { id: Date.now(), title: title || 'Inspiration', image: image || '/pwa-192.svg' };
+    const next = [item].concat(inspirations);
+    setInspirations(next);
+    localStorage.setItem('inspirations', JSON.stringify(next));
+  };
+
   // family corner rotating messages
   const familyMessages = [
     '"Main ghar ke tanav ko solve nahi kar sakta, main sirf apni pragati par focus kar sakta hoon."',
@@ -602,6 +643,11 @@ const App = () => {
             onClick={() => setActiveTab('hold')}
             className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'hold' ? `${accentBg} text-white shadow-md` : 'text-slate-400'}`}>
             {t('Hold List','होल्ड सूची')}
+          </button>
+          <button 
+            onClick={() => setActiveTab('inspire')}
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'inspire' ? `${accentBg} text-white shadow-md` : 'text-slate-400'}`}>
+            {t('Inspire','प्रेरणा')}
           </button>
         </div>
 
@@ -703,38 +749,58 @@ const App = () => {
           </>
         ) : (
           <section className="space-y-4 animate-in fade-in slide-in-from-right-2">
-             <div className="bg-blue-600 p-6 rounded-3xl text-white shadow-lg">
-               <h2 className="text-lg font-bold mb-1">{t('Dream Parking Lot','ड्रीम पार्किंग लॉट')}</h2>
-               <p className="text-xs text-blue-100 leading-relaxed">{t('These are parked so you can work peacefully today.','इन्हें "Hold" पर रखा है ताकि आप आज शांति से काम कर सकें।')}</p>
-             </div>
-             <div className="grid gap-3">
-               <div className="flex gap-2 mb-4">
-                 <input placeholder={t('Add new hold item...','नया होल्ड आइटम जोड़ें...')} className="flex-1 p-3 bg-slate-50 rounded-xl border-none text-sm" id="hold-new-input-tab" />
-                 <input placeholder={t('Icon (emoji)','Icon (इमोजी)')} id="hold-new-icon-tab" className="w-24 p-3 bg-slate-50 rounded-xl border-none text-sm" />
-                 <button onClick={() => { const el = document.getElementById('hold-new-input-tab'); const ic = document.getElementById('hold-new-icon-tab'); if (el) { addHoldItem(el.value, ic ? ic.value : '📝'); el.value=''; if (ic) ic.value=''; } }} className={`${accentBg} p-3 rounded-xl text-white shadow-md`}>{t('Add','जोड़ें')}</button>
-               </div>
-               {holdItems.map(item => (
-                 <div key={item.id} className="flex items-center gap-4 p-5 bg-white rounded-2xl shadow-sm border border-slate-100">
-                   <div className={`${accent50} w-12 h-12 rounded-2xl flex items-center justify-center ${accentText}`}>
-                     {getIcon(item.icon)}
-                   </div>
-                   <div className="flex-1">
-                     <h3 className="text-sm font-bold text-slate-800">{item.title}</h3>
-                     <p className={`text-[10px] ${accentText} font-bold uppercase tracking-widest mt-0.5`}>{item.status}</p>
-                   </div>
-                   <div className="flex flex-col items-end gap-2">
-                     <button onClick={() => { setTodayTask(item.title); removeHoldItem(item.id); saveData({ todayTask: item.title }); }} className={`px-2 py-1 text-xs ${accentBg} text-white rounded-md`}>{t('Move to Today','आज पर ले जाएँ')}</button>
-                     <span className="text-[10px] bg-slate-100 px-2 py-1 rounded-md text-slate-400 font-bold">SAVED</span>
-                   </div>
-                 </div>
-               ))}
-             </div>
-             <div className="p-6 bg-pink-50 rounded-2xl border border-pink-100 mt-6 shadow-sm">
-                <h3 className="text-xs font-bold text-pink-700 uppercase mb-2 flex items-center gap-2">
-                  <Heart className="w-4 h-4" /> {t('Family Corner','परिवार कोना')}
-                </h3>
-                <p className="text-xs text-pink-600 italic leading-relaxed">{t(familyMsg, familyMsg)}</p>
-             </div>
+            {activeTab === 'hold' && (
+              <>
+                <div className="bg-blue-600 p-6 rounded-3xl text-white shadow-lg">
+                  <h2 className="text-lg font-bold mb-1">{t('Dream Parking Lot','ड्रीम पार्किंग लॉट')}</h2>
+                  <p className="text-xs text-blue-100 leading-relaxed">{t('These are parked so you can work peacefully today.','इन्हें "Hold" पर रखा है ताकि आप आज शांति से काम कर सकें।')}</p>
+                </div>
+                <div className="grid gap-3">
+                  <div className="flex gap-2 mb-4">
+                    <input placeholder={t('Add new hold item...','नया होल्ड आइटम जोड़ें...')} className="flex-1 p-3 bg-slate-50 rounded-xl border-none text-sm" id="hold-new-input-tab" />
+                    <input placeholder={t('Icon (emoji)','Icon (इमोजी)')} id="hold-new-icon-tab" className="w-24 p-3 bg-slate-50 rounded-xl border-none text-sm" />
+                    <button onClick={() => { const el = document.getElementById('hold-new-input-tab'); const ic = document.getElementById('hold-new-icon-tab'); if (el) { addHoldItem(el.value, ic ? ic.value : '📝'); el.value=''; if (ic) ic.value=''; } }} className={`${accentBg} p-3 rounded-xl text-white shadow-md`}>{t('Add','जोड़ें')}</button>
+                  </div>
+                  {holdItems.map(item => (
+                    <div key={item.id} className="flex items-center gap-4 p-5 bg-white rounded-2xl shadow-sm border border-slate-100">
+                      <div className={`${accent50} w-12 h-12 rounded-2xl flex items-center justify-center ${accentText}`}>
+                        {getIcon(item.icon)}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-sm font-bold text-slate-800">{item.title}</h3>
+                        <p className={`text-[10px] ${accentText} font-bold uppercase tracking-widest mt-0.5`}>{item.status}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <button onClick={() => { setTodayTask(item.title); removeHoldItem(item.id); saveData({ todayTask: item.title }); }} className={`px-2 py-1 text-xs ${accentBg} text-white rounded-md`}>{t('Move to Today','आज पर ले जाएँ')}</button>
+                        <span className="text-[10px] bg-slate-100 px-2 py-1 rounded-md text-slate-400 font-bold">SAVED</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="p-6 bg-pink-50 rounded-2xl border border-pink-100 mt-6 shadow-sm">
+                  <h3 className="text-xs font-bold text-pink-700 uppercase mb-2 flex items-center gap-2">
+                    <Heart className="w-4 h-4" /> {t('Family Corner','परिवार कोना')}
+                  </h3>
+                  <p className="text-xs text-pink-600 italic leading-relaxed">{t(familyMsg, familyMsg)}</p>
+                </div>
+              </>
+            )}
+
+            {activeTab === 'inspire' && (
+              <section className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-bold">{t('Inspirations','प्रेरणाएँ')}</h2>
+                  <button onClick={() => { const title = window.prompt('New inspiration text'); if (title) addInspiration(title); }} className="text-xs p-2 bg-slate-100 rounded">Add</button>
+                </div>
+                <div className="space-y-3">
+                  <Suspense fallback={<div>Loading...</div>}>
+                    {inspirations.map(item => (
+                      <InspirationCard key={item.id} item={item} onRemove={removeInspiration} onSubscribe={subscribeToInspiration} />
+                    ))}
+                  </Suspense>
+                </div>
+              </section>
+            )}
           </section>
         )}
       </main>
