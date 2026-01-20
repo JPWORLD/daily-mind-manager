@@ -415,16 +415,17 @@ const App = () => {
         )}
 
         {activeTab === 'inspire' && (
-          <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-in fade-in slide-in-from-bottom-2">
-            <h2 className="text-lg font-bold text-slate-900 mb-4">Inspiration from Our Blog</h2>
+          <section className="animate-in fade-in slide-in-from-bottom-2">
+            <h2 className="text-lg font-bold text-slate-900 mb-4 text-center">Inspiration from Our Blog</h2>
             {blogPosts.length > 0 ? (
-              <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 {blogPosts.map(post => (
-                  <div key={post.id} className="p-4 border border-slate-200 rounded-lg">
-                    <h3 className="text-md font-bold text-slate-800">{post.title}</h3>
-                    <p className="text-sm text-slate-600 mt-1">{post.content.substring(0, 100)}...</p>
-                    <a href={`/blog/${post.slug}.html`} className="text-indigo-600 text-sm mt-2 inline-block">Read more</a>
-                  </div>
+                  <a key={post.id} href={`/blog/${post.slug}.html`} className="block bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 no-underline text-inherit">
+                    <img src={post.image || '/pwa-192.png'} alt={post.title} className="w-full h-32 object-cover rounded mb-3" />
+                    <h3 className="text-md font-bold text-slate-800 mb-2">{post.title}</h3>
+                    <p className="text-sm text-slate-600 mb-2">{post.content.substring(0, 100)}...</p>
+                    <div className="text-xs text-slate-400">{new Date(post.createdAt).toLocaleDateString()}</div>
+                  </a>
                 ))}
               </div>
             ) : (
