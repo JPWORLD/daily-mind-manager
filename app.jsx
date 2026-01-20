@@ -418,13 +418,15 @@ const App = () => {
           <section className="animate-in fade-in slide-in-from-bottom-2">
             <h2 className="text-lg font-bold text-slate-900 mb-4 text-center">Inspiration from Our Blog</h2>
             {blogPosts.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-4">
                 {blogPosts.map(post => (
-                  <a key={post.id} href={`/blog/${post.slug}.html`} className="block bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 no-underline text-inherit">
-                    <img src={post.image || '/pwa-192.png'} alt={post.title} className="w-full h-32 object-cover rounded mb-3" />
-                    <h3 className="text-md font-bold text-slate-800 mb-2">{post.title}</h3>
-                    <p className="text-sm text-slate-600 mb-2">{post.content.substring(0, 100)}...</p>
-                    <div className="text-xs text-slate-400">{new Date(post.createdAt).toLocaleDateString()}</div>
+                  <a key={post.id} href={`/blog/${post.slug}.html`} className="block bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 no-underline text-inherit flex items-start gap-4">
+                    <img src={post.image || '/pwa-192.png'} alt={post.title} className="w-20 h-20 object-cover rounded flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-md font-bold text-slate-800 mb-1">{post.title}</h3>
+                      <p className="text-sm text-slate-600 mb-2 line-clamp-2">{post.content.substring(0, 120)}...</p>
+                      <div className="text-xs text-slate-400">{new Date(post.createdAt).toLocaleDateString()}</div>
+                    </div>
                   </a>
                 ))}
               </div>
