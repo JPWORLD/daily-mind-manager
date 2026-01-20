@@ -46,6 +46,7 @@ const App = () => {
   const [temperature, setTemperature] = useState(null);
   const [themeMode, setThemeMode] = useState('default'); // e.g., sunny, rainy, sea, default
   const [greeting, setGreeting] = useState('');
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   // App State
   const [mood, setMood] = useState(null);
@@ -469,12 +470,14 @@ const App = () => {
 
   // Render Helpers
   const getIcon = (iconName) => {
+    // icon colors adapt to the selected theme
+    const colorClass = themeMode === 'sunny' ? 'text-yellow-500' : themeMode === 'rainy' ? 'text-blue-500' : themeMode === 'sea' ? 'text-teal-500' : 'text-indigo-600';
     switch(iconName) {
-      case 'Music': return <Music className="w-4 h-4" />;
-      case 'Car': return <Car className="w-4 h-4" />;
-      case 'Cloud': return <Cloud className="w-4 h-4" />;
-      case 'Smartphone': return <Smartphone className="w-4 h-4" />;
-      default: return <AlertCircle className="w-4 h-4" />;
+      case 'Music': return <Music className={`w-4 h-4 ${colorClass}`} />;
+      case 'Car': return <Car className={`w-4 h-4 ${colorClass}`} />;
+      case 'Cloud': return <Cloud className={`w-4 h-4 ${colorClass}`} />;
+      case 'Smartphone': return <Smartphone className={`w-4 h-4 ${colorClass}`} />;
+      default: return <AlertCircle className={`w-4 h-4 ${colorClass}`} />;
     }
   };
 
@@ -498,7 +501,7 @@ const App = () => {
               <p className="text-[10px] text-slate-400 uppercase tracking-tighter">{t('Powered by Cloud Sync','क्लाउड सिंक के साथ')}</p>
             </div>
           </div>
-              <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
               {syncStatus === 'syncing' && <RefreshCw className="w-3 h-3 text-indigo-500 animate-spin" />}
               {syncStatus === 'synced' && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
@@ -509,7 +512,18 @@ const App = () => {
               <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-slate-100 rounded-full">
                 <Settings className="w-5 h-5 text-slate-500" />
               </button>
-              <div className="text-xs text-slate-500 flex items-center gap-2">{username ? username : ''} {greeting ? <span className="text-[10px] text-slate-400 italic">{greeting}</span> : null}</div>
+              <button onClick={() => {
+                  const modes = ['default','sunny','rainy','sea'];
+                  const idx = modes.indexOf(themeMode);
+                  const next = modes[(idx + 1) % modes.length];
+                  setThemeMode(next);
+                  localStorage.setItem('dmm_theme', next);
+                }} title={t('Toggle theme','थीम बदलें')} className="p-2 hover:bg-slate-100 rounded-full">
+                <div className="w-5 h-5 flex items-center justify-center text-slate-500">🌓</div>
+              </button>
+              <div onClick={() => setShowOnboarding(true)} className="text-xs text-slate-500 flex items-center gap-2 cursor-pointer">
+                {username ? username : ''} {greeting ? <span className="text-[10px] text-slate-400 italic">{greeting}</span> : null}
+              </div>
             </div>
           </div>
         </div>
@@ -520,14 +534,12 @@ const App = () => {
         <div className="flex bg-white rounded-xl shadow-sm p-1 border border-slate-100">
           <button 
             onClick={() => setActiveTab('daily')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'daily' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
-          >
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'daily' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}>
             {t('Today','आज')}
           </button>
           <button 
             onClick={() => setActiveTab('hold')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'hold' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
-          >
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'hold' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}>
             {t('Hold List','होल्ड सूची')}
           </button>
         </div>
@@ -537,17 +549,21 @@ const App = () => {
             {/* Mood Tracker */}
             <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-in fade-in slide-in-from-bottom-2">
               <h2 className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest">{t('How are you feeling now?','मेरा मूड अभी कैसा है?')}</h2>
-              <div className="flex justify-around items-center">
-                <button onClick={() => handleMoodChange('happy')} className={`p-4 rounded-full transition-all ${mood === 'happy' ? 'bg-green-100 scale-125' : 'bg-slate-50 opacity-40 hover:opacity-100'}`}>
-                  <Smile className={`w-10 h-10 ${mood === 'happy' ? 'text-green-600' : 'text-slate-400'}`} />
-                </button>
-                <button onClick={() => handleMoodChange('neutral')} className={`p-4 rounded-full transition-all ${mood === 'neutral' ? 'bg-yellow-100 scale-125' : 'bg-slate-50 opacity-40 hover:opacity-100'}`}>
-                  <Meh className={`w-10 h-10 ${mood === 'neutral' ? 'text-yellow-600' : 'text-slate-400'}`} />
-                </button>
-                <button onClick={() => handleMoodChange('sad')} className={`p-4 rounded-full transition-all ${mood === 'sad' ? 'bg-red-100 scale-125' : 'bg-slate-50 opacity-40 hover:opacity-100'}`}>
-                  <Frown className={`w-10 h-10 ${mood === 'sad' ? 'text-red-600' : 'text-slate-400'}`} />
-                </button>
-              </div>
+                <div className="flex justify-between items-center flex-wrap gap-2">
+                  {[
+                    { key: 'very_happy', label: t('Very Happy','बहुत खुश'), emoji: '🤩' },
+                    { key: 'happy', label: t('Happy','खुश'), emoji: '😄' },
+                    { key: 'neutral', label: t('Neutral','तटस्थ'), emoji: '😐' },
+                    { key: 'sad', label: t('Sad','उदास'), emoji: '😔' },
+                    { key: 'angry', label: t('Angry','गुस्सा'), emoji: '😡' },
+                    { key: 'anxious', label: t('Anxious','चिंतित'), emoji: '😰' },
+                    { key: 'tired', label: t('Tired','थका हुआ'), emoji: '😴' }
+                  ].map(mo => (
+                    <button key={mo.key} title={mo.label} aria-label={mo.label} onClick={() => handleMoodChange(mo.key)} className={`p-3 rounded-full text-2xl transition-all ${mood === mo.key ? 'scale-110 ring-2 ring-indigo-200' : 'opacity-70 hover:opacity-100 bg-slate-50'}`}>
+                      <span>{mo.emoji}</span>
+                    </button>
+                  ))}
+                </div>
             </section>
 
             {/* The Rule of One Task */}
@@ -632,11 +648,14 @@ const App = () => {
               <div className="grid gap-3">
                 {holdItems.map(item => (
                   <div key={item.id} className="flex items-center gap-4 p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="w-10 h-10 bg-white rounded-md flex items-center justify-center text-lg">{item.icon}</div>
+                    <div className="w-10 h-10 bg-white rounded-md flex items-center justify-center text-lg">
+                      {['Music','Car','Cloud','Smartphone'].includes(item.icon) ? getIcon(item.icon) : <span className="text-lg">{item.icon}</span>}
+                    </div>
                     <div className="flex-1">
                       <h3 className="text-sm font-bold text-slate-800">{item.title}</h3>
                     </div>
                     <div className="flex gap-2">
+                      <button onClick={() => { setTodayTask(item.title); updateHoldItem(item.id, { status: 'Moved' }); removeHoldItem(item.id); saveData({ todayTask: item.title }); }} className="p-2 bg-white rounded">{t('Move','ले जाएँ')}</button>
                       <button onClick={() => { const newTitle = prompt(t('Edit title','शीर्षक संपादित करें'), item.title); if (newTitle !== null) updateHoldItem(item.id, { title: newTitle }); }} className="p-2 bg-white rounded">{t('Edit','संपादित')}</button>
                       <button onClick={() => { const newIcon = prompt(t('Update icon (emoji)','इकॉन अपडेट करें (इमोजी)'), item.icon); if (newIcon !== null) updateHoldItem(item.id, { icon: newIcon }); }} className="p-2 bg-white rounded">{t('Icon','इकॉन')}</button>
                       <button onClick={() => removeHoldItem(item.id)} className="p-2 bg-red-100 text-red-600 rounded">{t('Delete','हटा दें')}</button>
@@ -662,7 +681,10 @@ const App = () => {
                      <h3 className="text-sm font-bold text-slate-800">{item.title}</h3>
                      <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-widest mt-0.5">{item.status}</p>
                    </div>
-                   <span className="text-[10px] bg-slate-100 px-2 py-1 rounded-md text-slate-400 font-bold">SAVED</span>
+                   <div className="flex flex-col items-end gap-2">
+                     <button onClick={() => { setTodayTask(item.title); removeHoldItem(item.id); saveData({ todayTask: item.title }); }} className="px-2 py-1 text-xs bg-indigo-600 text-white rounded-md">{t('Move to Today','आज पर ले जाएँ')}</button>
+                     <span className="text-[10px] bg-slate-100 px-2 py-1 rounded-md text-slate-400 font-bold">SAVED</span>
+                   </div>
                  </div>
                ))}
              </div>
@@ -750,6 +772,7 @@ const App = () => {
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Scorecard</h3>
                 <div className="flex gap-2">
                   <button onClick={() => setShowScorecard(true)} className="flex-1 p-2 bg-white border rounded-2xl">Show Scorecard</button>
+                  <button onClick={() => setShowAnalytics(true)} className="flex-1 p-2 bg-white border rounded-2xl">Analytics</button>
                 </div>
               </div>
 
@@ -795,6 +818,35 @@ const App = () => {
               <button onClick={() => setScoreRange('180d')} className="px-3 py-2 bg-indigo-50 rounded">6 months</button>
             </div>
             <ScorecardContent rangeKey={scoreRange} computeStats={computeStats} />
+          </div>
+        </div>
+      )}
+
+      {showAnalytics && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/40">
+          <div className="bg-white w-full max-w-lg rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold">Analytics</h3>
+              <button onClick={() => setShowAnalytics(false)} className="p-2">Close</button>
+            </div>
+            <div className="mb-4 text-sm">
+              {(function(){
+                try {
+                  const raw = localStorage.getItem('pomo_history');
+                  const hist = raw ? JSON.parse(raw) : [];
+                  const total = hist.length;
+                  const totalSeconds = hist.reduce((s,h)=>s + (h.duration || 0), 0);
+                  const avgMin = total ? Math.round((totalSeconds/total)/60) : 0;
+                  return (
+                    <div>
+                      <div>Total sessions: <strong>{total}</strong></div>
+                      <div>Total focus time: <strong>{Math.round(totalSeconds/60)} min</strong></div>
+                      <div>Average session: <strong>{avgMin} min</strong></div>
+                    </div>
+                  );
+                } catch (e) { return <div className="text-xs text-slate-500">No analytics available</div>; }
+              })()}
+            </div>
           </div>
         </div>
       )}

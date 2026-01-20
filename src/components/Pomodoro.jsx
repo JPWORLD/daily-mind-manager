@@ -233,6 +233,20 @@ export default function Pomodoro({ onSessionComplete, t: _t, compact=false }) {
     } catch {}
   };
 
+  // custom time input (minutes)
+  const [customMinutes, setCustomMinutes] = useState('');
+
+  const applyCustomMinutes = () => {
+    try {
+      const m = Math.max(1, Number(customMinutes));
+      if (!isNaN(m)) {
+        setMode('work');
+        setRemaining(m * 60);
+        setRunning(false);
+      }
+    } catch (e) {}
+  };
+
   const saveConfig = (newConfig) => {
     setConfig(newConfig);
     // apply durations immediately if currently on that mode
@@ -347,6 +361,10 @@ export default function Pomodoro({ onSessionComplete, t: _t, compact=false }) {
             <button onClick={pause} aria-label="Pause" className={`px-3 py-1 rounded-lg ${compact?'text-sm px-2':'bg-yellow-400 text-white'}`}>{tt('Pause','रोकें')}</button>
           )}
           <button onClick={reset} aria-label="Reset" className={`px-3 py-1 rounded-lg ${compact?'text-sm px-2':'bg-slate-100'}`}>{tt('Reset','रीसेट')}</button>
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <input type="number" min="1" placeholder={tt('Minutes','मिनट')} value={customMinutes} onChange={(e)=>setCustomMinutes(e.target.value)} className="w-20 p-1 rounded text-sm bg-slate-50" />
+          <button onClick={applyCustomMinutes} className="px-2 py-1 rounded bg-indigo-100 text-xs">{tt('Set Time','समय सेट करें')}</button>
         </div>
         <div className="flex gap-2 text-xs mt-2">
           <button onClick={() => { setMode('work'); setRemaining(config.work); setRunning(false); }} className={`px-2 py-1 rounded ${mode==='work'?'bg-indigo-100':'bg-slate-50'}`}>{tt('Work','काम')}</button>
