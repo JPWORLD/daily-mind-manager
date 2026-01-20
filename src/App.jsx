@@ -52,7 +52,8 @@ const App = () => {
   const [themeMode, setThemeMode] = useState('default'); // e.g., sunny, rainy, sea, default
   const [greeting, setGreeting] = useState('');
   const [showAnalytics, setShowAnalytics] = useState(false);
-  const [adsConsentGiven, setAdsConsentGiven] = useState(() => (localStorage.getItem('ads_consent') === 'granted'));
+  const [analyticsConsent, setAnalyticsConsent] = useState(() => (localStorage.getItem('analytics_consent') === 'granted'));
+  const [adsPersonalization, setAdsPersonalization] = useState(() => (localStorage.getItem('ads_personalization') === 'granted'));
   const [showMoodLog, setShowMoodLog] = useState(false);
   const [moodLog, setMoodLog] = useState(() => { try { return JSON.parse(localStorage.getItem('mood_log') || '[]'); } catch { return []; } });
 
@@ -193,7 +194,7 @@ const App = () => {
   useEffect(() => {
     try {
       const client = import.meta.env.VITE_ADSENSE_CLIENT || '';
-      const consent = localStorage.getItem('ads_consent') || '';
+      const consent = localStorage.getItem('ads_personalization') || '';
       if (!client) return;
       if (consent !== 'granted') return; // do not load unless granted
       if (document.querySelector(`script[data-adsbygoogle-client="${client}"]`)) return;
@@ -210,7 +211,7 @@ const App = () => {
   useEffect(() => {
     try {
       const ga = import.meta.env.VITE_GA_MEASUREMENT_ID || '';
-      const consent = localStorage.getItem('ads_consent') || '';
+      const consent = localStorage.getItem('analytics_consent') || '';
       if (!ga) return;
       if (consent !== 'granted') return;
       if (document.querySelector(`script[data-gtag-id="${ga}"]`)) return;
@@ -220,7 +221,9 @@ const App = () => {
       s.src = `https://www.googletagmanager.com/gtag/js?id=${ga}`;
       document.head.appendChild(s);
       const inline = document.createElement('script');
-      inline.innerHTML = `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${ga}');`;
+      // Respect granular consent: analytics_consent and ads_personalization
+      const adsConsent = localStorage.getItem('ads_personalization') === 'granted';
+      inline.innerHTML = `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('consent', 'default', { 'ad_storage': '${adsConsent ? 'granted' : 'denied'}', 'analytics_storage': 'granted' }); gtag('config', '${ga}', { 'anonymize_ip': true });`;
       document.head.appendChild(inline);
     } catch (e) { console.error('ga inject failed', e); }
   }, []);
@@ -642,13 +645,7 @@ const App = () => {
                   {username ? username : ''} {greeting ? <span className="text-[10px] text-slate-400 italic">{greeting}</span> : null}
                 </div>
 
-                <div className="flex items-center gap-1">
-                  <button title="Log Very Happy" onClick={() => recordMood('very_happy')} className="p-2">🤩</button>
-                  <button title="Log Happy" onClick={() => recordMood('happy')} className="p-2">😄</button>
-                  <button title="Log Neutral" onClick={() => recordMood('neutral')} className="p-2">😐</button>
-                  <button title="Log Sad" onClick={() => recordMood('sad')} className="p-2">😔</button>
-                  <button title="Mood Log" onClick={() => setShowMoodLog(true)} className="p-2 hover:bg-slate-100 rounded-full">📈</button>
-                </div>
+                {/* Mood quick actions removed from header to declutter UI */}
               </div>
             </div>
           </div>
@@ -838,6 +835,7 @@ const App = () => {
       <footer className="fixed bottom-0 left-0 right-0 bg-white/80 border-t border-slate-100 p-2 backdrop-blur-md">
         <div className="max-w-md mx-auto flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-3">
+            <a href="/about.html" className="underline">About</a>
             <a href="/privacy.html" className="underline">Privacy</a>
             <a href="/terms.html" className="underline">Terms</a>
           </div>
@@ -848,6 +846,16 @@ const App = () => {
           </div>
         </div>
       </footer>
+
+          {/* Consent banner (granular) */}
+          <Suspense fallback={null}>
+            <ConsentBanner onConsentChange={({analytics, ads}) => {
+              try { localStorage.setItem('analytics_consent', analytics ? 'granted' : 'denied'); } catch(e){}
+              try { localStorage.setItem('ads_personalization', ads ? 'granted' : 'denied'); } catch(e){}
+              setAnalyticsConsent(!!analytics);
+              setAdsPersonalization(!!ads);
+            }} />
+          </Suspense>
 
       {/* Settings Modal */}
       {showSettings && (

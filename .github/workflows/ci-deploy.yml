@@ -1,0 +1,86 @@
+name: CI Build, Test and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (inject VITE_ env from secrets)
+        env:
+          VITE_GA_MEASUREMENT_ID: ${{ secrets.VITE_GA_MEASUREMENT_ID }}
+          VITE_ADSENSE_CLIENT: ${{ secrets.VITE_ADSENSE_CLIENT }}
+          VITE_ADSENSE_FOOTER_SLOT: ${{ secrets.VITE_ADSENSE_FOOTER_SLOT }}
+        run: npm run build
+
+      - name: Run Prisma migrations (if DATABASE_URL provided)
+        if: secrets.DATABASE_URL != ''
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          npm run prisma:generate
+          npx prisma migrate deploy --schema=prisma/schema.prisma
+
+      - name: Start static server for tests
+        run: |
+          npx http-server ./dist -p 8081 --silent &
+          # wait until server is ready
+          for i in {1..20}; do
+            curl -sSf http://localhost:8081/ && break || sleep 1
+          done
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        env:
+          # if ADMIN_TOKEN is not set, skip admin E2E tests to avoid flakes
+          CI_SKIP_ADMIN: ${{ secrets.ADMIN_TOKEN == '' && '1' || '' }}
+        run: |
+          if [ "${CI_SKIP_ADMIN}" = "1" ]; then
+            echo "ADMIN_TOKEN not provided — skipping admin E2E tests";
+            npx playwright test --grep-invert "Admin flow" --reporter=list;
+          else
+            npx playwright test --reporter=list;
+          fi
+
+      - name: Verify ads.txt contains publisher id (optional)
+        if: secrets.VITE_ADSENSE_CLIENT != ''
+        env:
+          VITE_ADSENSE_CLIENT: ${{ secrets.VITE_ADSENSE_CLIENT }}
+        run: node scripts/verify-ads.js ${{ secrets.VITE_ADSENSE_CLIENT }}
+
+      - name: Deploy to Vercel (optional)
+        if: secrets.VERCEL_TOKEN != ''
+        uses: amondnet/vercel-action@v20
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-args: --prod
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

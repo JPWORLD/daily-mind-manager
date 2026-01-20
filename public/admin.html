@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin — Daily Mind Manager</title>
+    <style>body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:24px}label{display:block;margin-top:12px}input,textarea{width:100%;padding:8px;margin-top:6px}</style>
+  </head>
+  <body>
+    <h1>Admin: Create Post</h1>
+    <div>
+      <label>Admin Token<input id="admintoken" placeholder="paste admin token"/></label>
+      <button id="store">Store Token</button>
+      <hr />
+      <label>Title<input id="title"/></label>
+      <label>Slug<input id="slug"/></label>
+      <label>Content<textarea id="content" rows="8"></textarea></label>
+      <label><input type="checkbox" id="published"/> Published</label>
+      <button id="save">Save</button>
+      <div id="out" style="margin-top:12px;color:green"></div>
+    </div>
+    <script>
+      // store token in localStorage for convenience (unprotected admin UI)
+      document.getElementById('store').addEventListener('click', ()=>{
+        const t = document.getElementById('admintoken').value.trim();
+        const out = document.getElementById('out');
+        if (t) { localStorage.setItem('dmm_admin_token', t); out.innerText = 'Admin token stored locally'; out.style.color='green'; } else { out.innerText = 'Please provide a token'; out.style.color='red'; }
+      });
+
+      async function getToken() {
+        return localStorage.getItem('dmm_admin_token') || '';
+      }
+
+      document.getElementById('save').addEventListener('click', async ()=>{
+        const data = {
+          title: document.getElementById('title').value,
+          slug: document.getElementById('slug').value,
+          content: document.getElementById('content').value,
+          published: document.getElementById('published').checked
+        };
+        const token = await getToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const res = await fetch('/api/posts', { method: 'POST', body: JSON.stringify(data), headers });
+        const json = await res.json();
+        if (res.ok) { document.getElementById('out').innerText = 'Saved: ' + json.slug; } else { document.getElementById('out').innerText = 'Error: ' + (json.error || res.statusText); }
+      });
+    </script>
+  </body>
+</html>
