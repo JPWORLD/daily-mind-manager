@@ -59,7 +59,16 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run Playwright tests
-        run: npx playwright test --reporter=list
+        env:
+          # if ADMIN_TOKEN is not set, skip admin E2E tests to avoid flakes
+          CI_SKIP_ADMIN: ${{ secrets.ADMIN_TOKEN == '' && '1' || '' }}
+        run: |
+          if [ "${CI_SKIP_ADMIN}" = "1" ]; then
+            echo "ADMIN_TOKEN not provided — skipping admin E2E tests";
+            npx playwright test --grep-invert "Admin flow" --reporter=list;
+          else
+            npx playwright test --reporter=list;
+          fi
 
       - name: Verify ads.txt contains publisher id (optional)
         if: secrets.VITE_ADSENSE_CLIENT != ''
