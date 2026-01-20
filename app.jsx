@@ -45,10 +45,11 @@ const App = () => {
   const [noiseList, setNoiseList] = useState([]);
   const [holdItems, setHoldItems] = useState([
     { id: 1, title: "Guitar Seekhna", status: "Hold", icon: "Music" },
-    { id: 2, title: "Car Seekhna/Lena", status: "Hold", icon: "Car" },
-    { id: 3, title: "AWS Architect Level", status: "Hold", icon: "Cloud" },
-    { id: 4, title: "iPhone & Investments", status: "Hold", icon: "Smartphone" }
+    { id: 2, title: "Car Seekhna/Lena", status: "Hold", icon: "Cloud" },
+    { id: 3, title: "AWS Architect Level", status: "Hold", icon: "Smartphone" },
+    { id: 4, title: "iPhone & Investments", status: "Hold", icon: "Heart" }
   ]);
+  const [aqiData, setAqiData] = useState(null);
   const [noiseInput, setNoiseInput] = useState("");
 
   const fileInputRef = useRef(null);
@@ -117,6 +118,21 @@ const App = () => {
       setSyncStatus('error');
     }
   };
+
+  // Fetch AQI
+  const fetchAQI = async () => {
+    try {
+      const response = await fetch('https://api.waqi.info/feed/here/?token=demo'); // Replace with real token
+      const data = await response.json();
+      setAqiData(data.data);
+    } catch (err) {
+      console.error('AQI fetch error', err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'aqi') fetchAQI();
+  }, [activeTab]);
 
   // Actions
   const addNoise = () => {
@@ -232,6 +248,12 @@ const App = () => {
           >
             Hold List
           </button>
+          <button 
+            onClick={() => setActiveTab('aqi')}
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'aqi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
+          >
+            Air Quality
+          </button>
         </div>
 
         {activeTab === 'daily' ? (
@@ -343,6 +365,35 @@ const App = () => {
                 </h3>
                 <p className="text-xs text-pink-600 italic leading-relaxed">"Main ghar ke tanav ko solve nahi kar sakta, main sirf apni pragati par focus kar sakta hoon."</p>
              </div>
+          </section>
+        )}
+
+        {activeTab === 'aqi' && (
+          <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-in fade-in slide-in-from-bottom-2">
+            <h2 className="text-lg font-bold text-slate-900 mb-4">Air Quality Index</h2>
+            {aqiData ? (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <div className={`text-4xl font-bold ${aqiData.aqi < 50 ? 'text-green-600' : aqiData.aqi < 100 ? 'text-yellow-600' : 'text-red-600'}`}>
+                    {aqiData.aqi}
+                  </div>
+                  <p className="text-sm text-slate-500">AQI Level</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-3 bg-slate-50 rounded-lg">
+                    <p className="text-xs text-slate-500">PM2.5</p>
+                    <p className="text-lg font-bold">{aqiData.iaqi.pm25?.v || 'N/A'}</p>
+                  </div>
+                  <div className="text-center p-3 bg-slate-50 rounded-lg">
+                    <p className="text-xs text-slate-500">PM10</p>
+                    <p className="text-lg font-bold">{aqiData.iaqi.pm10?.v || 'N/A'}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-400 text-center">Data from WAQI</p>
+              </div>
+            ) : (
+              <p className="text-center text-slate-500">Loading AQI data...</p>
+            )}
           </section>
         )}
       </main>

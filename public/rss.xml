@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Daily Mind Manager Blog</title>
+    <link>https://daily.bitmenders.in/blog/</link>
+    <description>Productivity tips and mind management insights</description>
+    <atom:link href="https://daily.bitmenders.in/rss.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>How to get started with 25-minute Pomodoros</title>
+      <link>https://daily.bitmenders.in/blog/post-1.html</link>
+      <description>Practical tips to begin 25-minute Pomodoro sessions and stay focused.</description>
+      <pubDate>Fri, 15 Jan 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Small habits that compound — a 30 day plan</title>
+      <link>https://daily.bitmenders.in/blog/post-2.html</link>
+      <description>A practical 30-day micro-habit plan you can start today.</description>
+      <pubDate>Sat, 28 Dec 2025 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Using ambient sounds to improve focus</title>
+      <link>https://daily.bitmenders.in/blog/post-3.html</link>
+      <description>How curated ambient soundscapes can help sustain short bursts of focused work.</description>
+      <pubDate>Wed, 04 Nov 2025 00:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
