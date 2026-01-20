@@ -1,20 +1,42 @@
 [
   {
     "id": 1,
-    "title": "cli-test",
-    "slug": "cli-e2e-1768896690",
-    "content": "x",
+    "title": "How to get started with 25-minute Pomodoros",
+    "slug": "post-1",
+    "content": "Start small: commit to one 25-minute session today. Plan a single task, eliminate distractions, set a timer, and focus. After the session, take a 5-minute break and repeat.\n\nUse Daily Mind Manager's Pomodoro timers to track your sessions. Keep your goals tiny and consistent.",
     "published": true,
-    "createdAt": "2026-01-20T08:11:30.195Z",
-    "updatedAt": "2026-01-20T08:11:30.195Z"
+    "image": "/pwa-512.png",
+    "createdAt": "2026-01-15T00:00:00.000Z",
+    "updatedAt": "2026-01-15T00:00:00.000Z"
   },
   {
     "id": 2,
-    "title": "E2E Test Post",
-    "slug": "e2e-1768896699274",
-    "content": "This is a test post created during E2E.",
+    "title": "Small habits that compound — a 30 day plan",
+    "slug": "post-2",
+    "content": "Day 1-7: Drink a glass of water upon waking.\nDay 8-14: Add 5 minutes of reading.\nDay 15-21: Include a short walk.\nDay 22-28: Practice gratitude journaling.\nDay 29-30: Review and adjust.\n\nThese micro-habits build momentum over time.",
     "published": true,
-    "createdAt": "2026-01-20T08:11:39.280Z",
-    "updatedAt": "2026-01-20T08:11:39.280Z"
+    "image": "/pwa-512.png",
+    "createdAt": "2025-12-28T00:00:00.000Z",
+    "updatedAt": "2025-12-28T00:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "title": "Using ambient sounds to improve focus",
+    "slug": "post-3",
+    "content": "Ambient sounds like rain or cafe noise can mask distractions and enhance concentration. Experiment with white noise, nature sounds, or lo-fi beats. Use apps to create custom soundscapes. Combine with structured breaks for optimal productivity.",
+    "published": true,
+    "image": "/pwa-512.png",
+    "createdAt": "2025-11-04T00:00:00.000Z",
+    "updatedAt": "2025-11-04T00:00:00.000Z"
+  },
+  {
+    "id": 4,
+    "title": "Mindfulness in daily routines",
+    "slug": "post-4",
+    "content": "Incorporate mindfulness by focusing on one task at a time. Practice deep breathing during transitions. Use reminders to pause and observe your thoughts. Over time, this builds mental clarity and reduces stress.",
+    "published": true,
+    "image": "/pwa-192.png",
+    "createdAt": "2025-10-15T00:00:00.000Z",
+    "updatedAt": "2025-10-15T00:00:00.000Z"
   }
 ]
