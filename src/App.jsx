@@ -23,6 +23,8 @@ import {
   Check
 } from 'lucide-react';
 const Pomodoro = React.lazy(() => import('./components/Pomodoro'));
+const ConsentBanner = React.lazy(() => import('./components/ConsentBanner'));
+const AdSlot = React.lazy(() => import('./components/AdSlot'));
 const InspirationCard = React.lazy(() => import('./components/InspirationCard'));
 
 // Read Firebase config from Vite env (set VITE_FIREBASE_CONFIG to JSON string)
@@ -50,6 +52,7 @@ const App = () => {
   const [themeMode, setThemeMode] = useState('default'); // e.g., sunny, rainy, sea, default
   const [greeting, setGreeting] = useState('');
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [adsConsentGiven, setAdsConsentGiven] = useState(() => (localStorage.getItem('ads_consent') === 'granted'));
   const [showMoodLog, setShowMoodLog] = useState(false);
   const [moodLog, setMoodLog] = useState(() => { try { return JSON.parse(localStorage.getItem('mood_log') || '[]'); } catch { return []; } });
 
@@ -186,11 +189,13 @@ const App = () => {
     })();
   }, []);
 
-  // Inject AdSense script if client id present in env
+  // Inject AdSense only if client id present AND user consented
   useEffect(() => {
     try {
       const client = import.meta.env.VITE_ADSENSE_CLIENT || '';
+      const consent = localStorage.getItem('ads_consent') || '';
       if (!client) return;
+      if (consent !== 'granted') return; // do not load unless granted
       if (document.querySelector(`script[data-adsbygoogle-client="${client}"]`)) return;
       const s = document.createElement('script');
       s.async = true;
@@ -199,6 +204,25 @@ const App = () => {
       s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${client}`;
       document.head.appendChild(s);
     } catch (e) { console.error('adsense inject failed', e); }
+  }, []);
+
+  // Inject GA4 (if configured) after consent
+  useEffect(() => {
+    try {
+      const ga = import.meta.env.VITE_GA_MEASUREMENT_ID || '';
+      const consent = localStorage.getItem('ads_consent') || '';
+      if (!ga) return;
+      if (consent !== 'granted') return;
+      if (document.querySelector(`script[data-gtag-id="${ga}"]`)) return;
+      const s = document.createElement('script');
+      s.async = true;
+      s.setAttribute('data-gtag-id', ga);
+      s.src = `https://www.googletagmanager.com/gtag/js?id=${ga}`;
+      document.head.appendChild(s);
+      const inline = document.createElement('script');
+      inline.innerHTML = `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${ga}');`;
+      document.head.appendChild(inline);
+    } catch (e) { console.error('ga inject failed', e); }
   }, []);
 
   // Mood logging: record mood + timestamp
@@ -809,6 +833,21 @@ const App = () => {
       <div className="fixed bottom-6 right-6 z-50">
         <FloatingPomodoro accent={accentBg} accentText={accentText} accentLight={accentLight} />
       </div>
+
+      {/* Footer with privacy links and ad placeholder */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/80 border-t border-slate-100 p-2 backdrop-blur-md">
+        <div className="max-w-md mx-auto flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center gap-3">
+            <a href="/privacy.html" className="underline">Privacy</a>
+            <a href="/terms.html" className="underline">Terms</a>
+          </div>
+          <div className="w-32">
+            <Suspense fallback={<div/>}>
+              <AdSlot client={import.meta.env.VITE_ADSENSE_CLIENT} slot={import.meta.env.VITE_ADSENSE_FOOTER_SLOT} style={{display:'block',height:50}} />
+            </Suspense>
+          </div>
+        </div>
+      </footer>
 
       {/* Settings Modal */}
       {showSettings && (
