@@ -790,18 +790,20 @@ const App = () => {
 
       {showScorecard && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white w-full max-w-lg rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl p-0 max-h-[90vh] overflow-y-auto">
+            <div className="p-6 sticky top-0 bg-white border-b flex items-center justify-between">
               <h3 className="text-lg font-bold">Scorecard & Achievements</h3>
-              <button onClick={() => setShowScorecard(false)} className="p-2">Close</button>
+              <button onClick={() => setShowScorecard(false)} className="p-2 bg-slate-100 rounded-full">Close</button>
             </div>
-            <div className="flex gap-2 mb-4">
-              <button onClick={() => setScoreRange('7d')} className={`px-3 py-2 ${accent50} rounded`}>1 week</button>
-              <button onClick={() => setScoreRange('30d')} className={`px-3 py-2 ${accent50} rounded`}>1 month</button>
-              <button onClick={() => setScoreRange('90d')} className={`px-3 py-2 ${accent50} rounded`}>3 months</button>
-              <button onClick={() => setScoreRange('180d')} className="px-3 py-2 bg-indigo-50 rounded">6 months</button>
+            <div className="p-6">
+              <div className="flex gap-2 mb-4">
+                <button onClick={() => setScoreRange('7d')} className={`px-3 py-2 ${accent50} rounded`}>1 week</button>
+                <button onClick={() => setScoreRange('30d')} className={`px-3 py-2 ${accent50} rounded`}>1 month</button>
+                <button onClick={() => setScoreRange('90d')} className={`px-3 py-2 ${accent50} rounded`}>3 months</button>
+                <button onClick={() => setScoreRange('180d')} className="px-3 py-2 bg-indigo-50 rounded">6 months</button>
+              </div>
+              <ScorecardContent rangeKey={scoreRange} computeStats={computeStats} />
             </div>
-            <ScorecardContent rangeKey={scoreRange} computeStats={computeStats} />
           </div>
         </div>
       )}

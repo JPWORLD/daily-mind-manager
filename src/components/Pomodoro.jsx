@@ -270,12 +270,16 @@ export default function Pomodoro({ onSessionComplete, t: _t, compact=false, acce
   // alarm play supporting beep, chime, or custom audio
   const playAlarm = async () => {
     try {
-      const stored = localStorage.getItem('pomoAlarm') || 'beep';
-      const vol = Number(localStorage.getItem('pomoAlarmVol') || 1);
-      if (stored === 'beep') return playBeep();
+      const stored = alarm || 'beep';
+      const vol = Number(alarmVol || 1);
+      // resume existing AudioContext if suspended (user interaction should allow this)
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        try { await audioCtxRef.current.resume(); } catch (e) {}
+      }
+      if (stored === 'beep') return playBeep(vol);
       if (stored === 'chime') {
-        // small chime via WebAudio (harmonic)
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        // small chime via WebAudio (harmonic) using existing ctx when possible
+        const ctx = audioCtxRef.current || new (window.AudioContext || window.webkitAudioContext)();
         const o = ctx.createOscillator();
         const g = ctx.createGain();
         o.type = 'triangle';
@@ -286,12 +290,12 @@ export default function Pomodoro({ onSessionComplete, t: _t, compact=false, acce
         g.gain.exponentialRampToValueAtTime(vol * 0.2, ctx.currentTime + 0.01);
         o.start();
         g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 1.2);
-        setTimeout(()=>{ try { o.stop(); ctx.close(); } catch(e){} }, 1400);
+        setTimeout(()=>{ try { o.stop(); if (!audioCtxRef.current) ctx.close(); } catch(e){} }, 1400);
         return;
       }
       // custom (object URL stored separately)
       if (stored === 'custom') {
-        const url = localStorage.getItem('pomoAlarmCustom');
+        const url = customAlarmUrl || localStorage.getItem('pomoAlarmCustom');
         if (url) {
           const a = new Audio(url);
           a.volume = vol;
@@ -302,10 +306,10 @@ export default function Pomodoro({ onSessionComplete, t: _t, compact=false, acce
     } catch(e) { console.error('playAlarm failed', e); }
   };
 
-  // simple beep via WebAudio
-  const playBeep = () => {
+  // simple beep via WebAudio; uses existing AudioContext when available
+  const playBeep = (vol = 1) => {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = audioCtxRef.current || new (window.AudioContext || window.webkitAudioContext)();
       const o = ctx.createOscillator();
       const g = ctx.createGain();
       o.type = 'sine';
@@ -314,9 +318,9 @@ export default function Pomodoro({ onSessionComplete, t: _t, compact=false, acce
       o.connect(g);
       g.connect(ctx.destination);
       o.start();
-      g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(vol * 0.2, ctx.currentTime + 0.01);
       g.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
-      setTimeout(() => { try { o.stop(); ctx.close(); } catch (e) {} }, 700);
+      setTimeout(() => { try { o.stop(); if (!audioCtxRef.current) ctx.close(); } catch (e) {} }, 700);
     } catch (e) { console.error('beep failed', e); }
   };
 
