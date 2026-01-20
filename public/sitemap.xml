@@ -14,19 +14,19 @@
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://daily.bitmenders.in/blog/</loc>
+    <loc>https://daily.bitmenders.in/blog/post.html?slug=post-1</loc>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://daily.bitmenders.in/blog/post-1.html</loc>
+    <loc>https://daily.bitmenders.in/blog/post.html?slug=post-2</loc>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://daily.bitmenders.in/blog/post-2.html</loc>
+    <loc>https://daily.bitmenders.in/blog/post.html?slug=post-3</loc>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://daily.bitmenders.in/blog/post-4.html</loc>
+    <loc>https://daily.bitmenders.in/blog/post.html?slug=post-4</loc>
     <priority>0.6</priority>
   </url>
   <url>

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title id="title">Daily Mind Manager — Blog</title>
+    <meta name="robots" content="index,follow" />
+    <meta name="description" id="description" content="Productivity tips and mind management insights" />
+    <meta property="og:title" id="og-title" content="Daily Mind Manager — Blog" />
+    <meta property="og:description" id="og-description" content="Productivity tips and mind management insights" />
+    <meta property="og:image" id="og-image" content="/pwa-512.png" />
+    <meta property="og:url" id="og-url" content="/blog/" />
+    <meta property="og:type" content="article" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" id="twitter-title" content="Daily Mind Manager — Blog" />
+    <meta name="twitter:description" id="twitter-description" content="Productivity tips and mind management insights" />
+    <meta name="twitter:image" id="twitter-image" content="/pwa-512.png" />
+    <script type="application/ld+json" id="json-ld">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "Daily Mind Manager — Blog",
+      "description": "Productivity tips and mind management insights",
+      "image": "/pwa-512.png",
+      "datePublished": "2026-01-20",
+      "author": {
+        "@type": "Person",
+        "name": "Daily Mind Manager"
+      }
+    }
+    </script>
+    <style>
+      body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:18px;max-width:760px;margin:0 auto;color:#0f172a;background:#f8fafc}
+      .hero{width:100%;height:220px;border-radius:12px;object-fit:cover;background:#e6eef8;margin-bottom:16px}
+      h1{font-size:22px;margin:0 0 8px}
+      .meta{color:#64748b;font-size:13px;margin-bottom:12px}
+      p{line-height:1.6;color:#334155}
+      .read-btn{background:#007bff;color:white;border:none;padding:8px 12px;border-radius:4px;margin-right:8px;cursor:pointer}
+      .read-btn:hover{background:#0056b3}
+      .loading{text-align:center;color:#64748b}
+    </style>
+  </head>
+  <body>
+    <div id="content" class="container">
+      <div class="loading">Loading post...</div>
+    </div>
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const slug = urlParams.get('slug') || window.location.pathname.split('/').pop().replace('.html', '');
+
+      async function loadPost() {
+        try {
+          const res = await fetch('/api/posts');
+          const posts = await res.json();
+          const post = posts.find(p => p.slug === slug);
+          if (post) {
+            document.getElementById('title').textContent = post.title;
+            document.getElementById('description').content = post.content.substring(0, 150);
+            document.getElementById('og-title').content = post.title;
+            document.getElementById('og-description').content = post.content.substring(0, 150);
+            document.getElementById('og-image').content = post.image || '/pwa-512.png';
+            document.getElementById('og-url').content = window.location.href;
+            document.getElementById('twitter-title').content = post.title;
+            document.getElementById('twitter-description').content = post.content.substring(0, 150);
+            document.getElementById('twitter-image').content = post.image || '/pwa-512.png';
+            const jsonLd = {
+              "@context": "https://schema.org",
+              "@type": "Article",
+              "headline": post.title,
+              "description": post.content.substring(0, 150),
+              "image": post.image || '/pwa-512.png',
+              "datePublished": post.createdAt,
+              "author": {
+                "@type": "Person",
+                "name": "Daily Mind Manager"
+              }
+            };
+            document.getElementById('json-ld').textContent = JSON.stringify(jsonLd);
+            document.getElementById('content').innerHTML = `
+              <img class="hero" src="${post.image || '/pwa-512.png'}" alt="${post.title}" />
+              <h1>${post.title}</h1>
+              <div class="meta">${new Date(post.createdAt).toLocaleDateString()}</div>
+              <button id="readAloud" class="read-btn">Read Aloud (English)</button>
+              <button id="readHindi" class="read-btn">Read Aloud (Hindi)</button>
+              <div id="post-content">${post.content.replace(/\n/g, '<br>')}</div>
+            `;
+            // Add read aloud functionality
+            document.getElementById('readAloud').addEventListener('click', () => {
+              const utterance = new SpeechSynthesisUtterance(post.content);
+              utterance.lang = 'en-US'; // English
+              speechSynthesis.speak(utterance);
+            });
+            document.getElementById('readHindi').addEventListener('click', () => {
+              const utterance = new SpeechSynthesisUtterance(post.content);
+              utterance.lang = 'hi-IN'; // Hindi
+              speechSynthesis.speak(utterance);
+            });
+          } else {
+            document.getElementById('content').innerHTML = '<div class="loading">Post not found</div>';
+          }
+        } catch (e) {
+          document.getElementById('content').innerHTML = '<div class="loading">Error loading post</div>';
+        }
+      }
+      loadPost();
+    </script>
+  </body>
+</html>

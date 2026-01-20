@@ -244,34 +244,38 @@ const App = () => {
         </div>
       </header>
 
-      <main className="max-w-md mx-auto p-4 space-y-6">
+      <main className="flex flex-col lg:flex-row max-w-md lg:max-w-6xl mx-auto p-4 space-y-6 lg:space-y-0 lg:space-x-6">
         {/* Tab Selection */}
-        <div className="flex bg-white rounded-xl shadow-sm p-1 border border-slate-100">
-          <button 
-            onClick={() => setActiveTab('daily')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'daily' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
-          >
-            Aaj Ka Din
-          </button>
-          <button 
-            onClick={() => setActiveTab('hold')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'hold' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
-          >
-            Hold List
-          </button>
-          <button 
-            onClick={() => setActiveTab('aqi')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'aqi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
-          >
-            Air Quality
-          </button>
-          <button 
-            onClick={() => setActiveTab('inspire')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'inspire' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
-          >
-            Inspire
-          </button>
+        <div className="lg:w-1/4">
+          <div className="lg:sticky lg:top-4 bg-white rounded-xl shadow-sm p-1 border border-slate-100 flex lg:flex-col">
+            <button 
+              onClick={() => setActiveTab('daily')}
+              className={`flex-1 lg:flex-none py-2 px-4 text-sm font-semibold rounded-lg transition-all ${activeTab === 'daily' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
+            >
+              Aaj Ka Din
+            </button>
+            <button 
+              onClick={() => setActiveTab('hold')}
+              className={`flex-1 lg:flex-none py-2 px-4 text-sm font-semibold rounded-lg transition-all ${activeTab === 'hold' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
+            >
+              Hold List
+            </button>
+            <button 
+              onClick={() => setActiveTab('aqi')}
+              className={`flex-1 lg:flex-none py-2 px-4 text-sm font-semibold rounded-lg transition-all ${activeTab === 'aqi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
+            >
+              Air Quality
+            </button>
+            <button 
+              onClick={() => setActiveTab('inspire')}
+              className={`flex-1 lg:flex-none py-2 px-4 text-sm font-semibold rounded-lg transition-all ${activeTab === 'inspire' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
+            >
+              Inspire
+            </button>
+          </div>
         </div>
+
+        <div className="lg:w-3/4 space-y-6">
 
         {activeTab === 'daily' ? (
           <>
@@ -420,7 +424,7 @@ const App = () => {
             {blogPosts.length > 0 ? (
               <div className="space-y-4">
                 {blogPosts.map(post => (
-                  <a key={post.id} href={`/blog/${post.slug}.html`} className="block bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 no-underline text-inherit flex items-start gap-4">
+                  <a key={post.id} href={`/blog/post.html?slug=${post.slug}`} className="block bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 no-underline text-inherit flex items-start gap-4">
                     <img src={post.image || '/pwa-192.png'} alt={post.title} className="w-20 h-20 object-cover rounded flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <h3 className="text-md font-bold text-slate-800 mb-1">{post.title}</h3>
@@ -435,6 +439,7 @@ const App = () => {
             )}
           </section>
         )}
+        </div>
       </main>
 
       {/* Settings Modal */}
