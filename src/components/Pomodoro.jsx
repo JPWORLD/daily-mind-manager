@@ -334,11 +334,11 @@ export default function Pomodoro({ onSessionComplete, t: _t, compact=false }) {
         </div>
         <div className="flex gap-2">
           {!running ? (
-            <button onClick={start} className={`px-3 py-1 rounded-lg ${compact?'text-sm px-2':'bg-indigo-600 text-white'}`}>{tt('Start','शुरू')}</button>
+            <button onClick={start} aria-label="Start" className={`px-3 py-1 rounded-lg ${compact?'text-sm px-2':'bg-indigo-600 text-white'}`}>{tt('Start','शुरू')}</button>
           ) : (
-            <button onClick={pause} className={`px-3 py-1 rounded-lg ${compact?'text-sm px-2':'bg-yellow-400 text-white'}`}>{tt('Pause','रोकें')}</button>
+            <button onClick={pause} aria-label="Pause" className={`px-3 py-1 rounded-lg ${compact?'text-sm px-2':'bg-yellow-400 text-white'}`}>{tt('Pause','रोकें')}</button>
           )}
-          <button onClick={reset} className={`px-3 py-1 rounded-lg ${compact?'text-sm px-2':'bg-slate-100'}`}>{tt('Reset','रीसेट')}</button>
+          <button onClick={reset} aria-label="Reset" className={`px-3 py-1 rounded-lg ${compact?'text-sm px-2':'bg-slate-100'}`}>{tt('Reset','रीसेट')}</button>
         </div>
         <div className="flex gap-2 text-xs mt-2">
           <button onClick={() => { setMode('work'); setRemaining(config.work); setRunning(false); }} className={`px-2 py-1 rounded ${mode==='work'?'bg-indigo-100':'bg-slate-50'}`}>{tt('Work','काम')}</button>
