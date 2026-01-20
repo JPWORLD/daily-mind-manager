@@ -4,6 +4,8 @@ import { test, expect } from '@playwright/test';
 const BASE = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8080';
 
 test('theme toggle updates accent classes', async ({ page }) => {
+  // avoid onboarding or modal overlays by seeding localStorage before load
+  await page.addInitScript({ content: "localStorage.setItem('dmm_seen_onboarding','1'); localStorage.setItem('dmm_username','Tester');" });
   await page.goto(BASE, { waitUntil: 'networkidle' });
   // wait for app shell to load
   await page.waitForSelector('header', { timeout: 30000 });
@@ -12,18 +14,11 @@ test('theme toggle updates accent classes', async ({ page }) => {
   await expect(dailyTab).toBeVisible();
   const before = await dailyTab.getAttribute('class');
 
-  // attempt to find a theme toggle by trying header buttons until dailyTab class changes
-  const buttons = await page.locator('header button').all();
-  let changed = false;
-  for (let i = 0; i < Math.min(buttons.length, 12); i++) {
-    try {
-      await buttons[i].click();
-      await page.waitForTimeout(250);
-      const after = await dailyTab.getAttribute('class');
-      if (after !== before) { changed = true; break; }
-    } catch (e) {
-      // ignore and continue
-    }
-  }
-  expect(changed).toBeTruthy();
+  // click the explicit theme toggle (contains the moon/sun emoji) for reliability
+  const themeBtn = page.locator('header button:has-text("🌓")');
+  await expect(themeBtn).toBeVisible({ timeout: 5000 });
+  await themeBtn.click();
+  await page.waitForTimeout(250);
+  const after = await dailyTab.getAttribute('class');
+  expect(after).not.toBe(before);
 });

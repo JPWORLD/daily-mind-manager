@@ -1,23 +1,21 @@
 import React, { useEffect, useState } from 'react';
 
 export default function ConsentBanner({ onConsentChange }) {
-  const [visible, setVisible] = useState(() => !localStorage.getItem('ads_consent'));
+  const [visible, setVisible] = useState(() => {
+    // show if neither consent key is present
+    return !(localStorage.getItem('analytics_consent') || localStorage.getItem('ads_personalization'));
+  });
 
   useEffect(() => {
-    const v = !localStorage.getItem('ads_consent');
+    const v = !(localStorage.getItem('analytics_consent') || localStorage.getItem('ads_personalization'));
     setVisible(v);
   }, []);
 
-  const accept = (persist=true) => {
-    try { localStorage.setItem('ads_consent', 'granted'); } catch(e){}
+  const setConsents = (analyticsGranted, adsGranted) => {
+    try { localStorage.setItem('analytics_consent', analyticsGranted ? 'granted' : 'denied'); } catch(e){}
+    try { localStorage.setItem('ads_personalization', adsGranted ? 'granted' : 'denied'); } catch(e){}
     setVisible(false);
-    if (typeof onConsentChange === 'function') onConsentChange(true);
-  };
-
-  const decline = () => {
-    try { localStorage.setItem('ads_consent', 'denied'); } catch(e){}
-    setVisible(false);
-    if (typeof onConsentChange === 'function') onConsentChange(false);
+    if (typeof onConsentChange === 'function') onConsentChange({ analytics: !!analyticsGranted, ads: !!adsGranted });
   };
 
   if (!visible) return null;
@@ -27,13 +25,15 @@ export default function ConsentBanner({ onConsentChange }) {
       <div className="flex items-start gap-3">
         <div className="flex-1">
           <div className="text-sm font-bold">We use cookies & ads</div>
-          <div className="text-xs text-slate-600">We use analytics and ads to keep the app free. Allow personalized ads and analytics?</div>
+          <div className="text-xs text-slate-600">We use analytics and ads to keep the app free. Choose what you allow.</div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={decline} className="px-3 py-1 rounded bg-slate-100 text-sm">No</button>
-          <button onClick={() => accept()} className="px-3 py-1 rounded bg-indigo-600 text-white text-sm">Yes</button>
+        <div className="flex flex-col items-end gap-2">
+          <button onClick={() => setConsents(false, false)} className="px-3 py-1 rounded bg-slate-100 text-sm">Reject All</button>
+          <button onClick={() => setConsents(true, false)} className="px-3 py-1 rounded bg-slate-200 text-sm">Analytics Only</button>
+          <button onClick={() => setConsents(true, true)} className="px-3 py-1 rounded bg-indigo-600 text-white text-sm">Allow Personalized Ads</button>
         </div>
       </div>
+      <div className="mt-3 text-[11px] text-slate-500">You can change these later in Settings. Privacy: <a href="/privacy.html" className="underline">privacy</a>.</div>
     </div>
   );
 }
