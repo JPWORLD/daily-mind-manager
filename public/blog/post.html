@@ -35,7 +35,8 @@
       h1{font-size:22px;margin:0 0 8px}
       .meta{color:#64748b;font-size:13px;margin-bottom:12px}
       p{line-height:1.6;color:#334155}
-      .container{background:#fff;padding:16px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.06)}
+      .read-btn{background:#007bff;color:white;border:none;padding:8px 12px;border-radius:4px;margin-right:8px;cursor:pointer}
+      .read-btn:hover{background:#0056b3}
       .loading{text-align:center;color:#64748b}
     </style>
   </head>
@@ -79,8 +80,21 @@
               <img class="hero" src="${post.image || '/pwa-512.png'}" alt="${post.title}" />
               <h1>${post.title}</h1>
               <div class="meta">${new Date(post.createdAt).toLocaleDateString()}</div>
-              <div>${post.content.replace(/\n/g, '<br>')}</div>
+              <button id="readAloud" class="read-btn">Read Aloud (English)</button>
+              <button id="readHindi" class="read-btn">Read Aloud (Hindi)</button>
+              <div id="post-content">${post.content.replace(/\n/g, '<br>')}</div>
             `;
+            // Add read aloud functionality
+            document.getElementById('readAloud').addEventListener('click', () => {
+              const utterance = new SpeechSynthesisUtterance(post.content);
+              utterance.lang = 'en-US'; // English
+              speechSynthesis.speak(utterance);
+            });
+            document.getElementById('readHindi').addEventListener('click', () => {
+              const utterance = new SpeechSynthesisUtterance(post.content);
+              utterance.lang = 'hi-IN'; // Hindi
+              speechSynthesis.speak(utterance);
+            });
           } else {
             document.getElementById('content').innerHTML = '<div class="loading">Post not found</div>';
           }
