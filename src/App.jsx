@@ -194,7 +194,7 @@ const App = () => {
     } catch (e) { console.error('mood log failed', e); }
   };
 
-  const handleMoodChange = (key) => {
+  const recordMood = (key) => {
     const mapping = {
       very_happy: ['🤩','very_happy'],
       happy: ['😄','happy'],
@@ -205,7 +205,11 @@ const App = () => {
       tired: ['😴','tired']
     };
     const m = mapping[key] || ['😐', 'neutral'];
-    try { setMood(key); logMood(m[0], m[1]); } catch (e) { console.error(e); }
+    try {
+      setMood(key);
+      saveData({ mood: key });
+      logMood(m[0], m[1]);
+    } catch (e) { console.error(e); }
   };
 
   // Persist local app state as a fallback
@@ -574,10 +578,10 @@ const App = () => {
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <button title="Log Very Happy" onClick={() => handleMoodChange('very_happy')} className="p-2">🤩</button>
-                  <button title="Log Happy" onClick={() => handleMoodChange('happy')} className="p-2">😄</button>
-                  <button title="Log Neutral" onClick={() => handleMoodChange('neutral')} className="p-2">😐</button>
-                  <button title="Log Sad" onClick={() => handleMoodChange('sad')} className="p-2">😔</button>
+                  <button title="Log Very Happy" onClick={() => recordMood('very_happy')} className="p-2">🤩</button>
+                  <button title="Log Happy" onClick={() => recordMood('happy')} className="p-2">😄</button>
+                  <button title="Log Neutral" onClick={() => recordMood('neutral')} className="p-2">😐</button>
+                  <button title="Log Sad" onClick={() => recordMood('sad')} className="p-2">😔</button>
                   <button title="Mood Log" onClick={() => setShowMoodLog(true)} className="p-2 hover:bg-slate-100 rounded-full">📈</button>
                 </div>
               </div>
@@ -616,7 +620,7 @@ const App = () => {
                     { key: 'anxious', label: t('Anxious','चिंतित'), emoji: '😰' },
                     { key: 'tired', label: t('Tired','थका हुआ'), emoji: '😴' }
                   ].map(mo => (
-                    <button key={mo.key} title={mo.label} aria-label={mo.label} onClick={() => handleMoodChange(mo.key)} className={`p-3 rounded-full text-2xl transition-all ${mood === mo.key ? 'scale-110 ring-2 ring-indigo-200' : 'opacity-70 hover:opacity-100 bg-slate-50'}`}>
+                    <button key={mo.key} title={mo.label} aria-label={mo.label} onClick={() => recordMood(mo.key)} className={`p-3 rounded-full text-2xl transition-all ${mood === mo.key ? 'scale-110 ring-2 ring-indigo-200' : 'opacity-70 hover:opacity-100 bg-slate-50'}`}>
                       <span>{mo.emoji}</span>
                     </button>
                   ))}
