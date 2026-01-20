@@ -314,7 +314,17 @@ const App = () => {
     const pomoHistory = (() => { try { return JSON.parse(localStorage.getItem('pomo_history') || '[]'); } catch { return []; } })();
     const pomoState = (() => { try { return JSON.parse(localStorage.getItem('pomoState') || '{}'); } catch { return {}; } })();
     const meta = { themeMode, username, lang, lastPomodoroCount: localStorage.getItem('lastPomodoroCount') || null };
-    const dataStr = JSON.stringify({ mood, todayTask, isTaskDone, noiseList, holdItems, pomoHistory, pomoState, meta });
+    // compute achievements from history
+    const computeAchievements = (hist) => {
+      const total = (hist || []).length;
+      const badges = [];
+      if (total >= 10) badges.push({ id: '10', title: '10 Sessions' });
+      if (total >= 50) badges.push({ id: '50', title: '50 Sessions' });
+      if (total >= 100) badges.push({ id: '100', title: '100 Sessions' });
+      return badges;
+    };
+    const achievements = computeAchievements(pomoHistory);
+    const dataStr = JSON.stringify({ mood, todayTask, isTaskDone, noiseList, holdItems, pomoHistory, pomoState, meta, achievements });
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     const exportFileDefaultName = `mind_manager_backup_${new Date().toISOString().split('T')[0]}.json`;
     
@@ -339,6 +349,7 @@ const App = () => {
         // restore pomo history and state
         try { if (json.pomoHistory) localStorage.setItem('pomo_history', JSON.stringify(json.pomoHistory)); } catch(e){}
         try { if (json.pomoState) localStorage.setItem('pomoState', JSON.stringify(json.pomoState)); } catch(e){}
+        try { if (json.achievements) localStorage.setItem('pomo_achievements', JSON.stringify(json.achievements)); } catch(e){}
         try { if (json.meta && json.meta.themeMode) { setThemeMode(json.meta.themeMode); localStorage.setItem('dmm_theme', json.meta.themeMode); } } catch(e){}
         try { if (json.meta && json.meta.username) { setUsername(json.meta.username); localStorage.setItem('dmm_username', json.meta.username); } } catch(e){}
         try { if (json.meta && json.meta.lang) { setLang(json.meta.lang); localStorage.setItem('dmm_lang', json.meta.lang); } } catch(e){}
@@ -845,10 +856,34 @@ function ScorecardContent({ rangeKey, computeStats }) {
   };
   const from = getFrom(rangeKey);
   const stats = computeStats(from);
+  // compute achievements from cached pomo_history or from stats
+  const achievements = (() => {
+    try {
+      const raw = localStorage.getItem('pomo_achievements');
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    // fallback compute from history
+    try {
+      const raw2 = localStorage.getItem('pomo_history');
+      const hist = raw2 ? JSON.parse(raw2) : [];
+      const total = hist.length;
+      const badges = [];
+      if (total >= 10) badges.push({ id: '10', title: '10 Sessions' });
+      if (total >= 50) badges.push({ id: '50', title: '50 Sessions' });
+      if (total >= 100) badges.push({ id: '100', title: '100 Sessions' });
+      return badges;
+    } catch (e) { return []; }
+  })();
   return (
     <div>
       <div className="mb-2">Total sessions: <strong>{stats.total}</strong></div>
       <div className="mb-2">Active days: <strong>{stats.daysActive}</strong></div>
+      <div className="mb-4">Achievements:</div>
+      <div className="flex gap-2 mb-4">
+        {achievements.length === 0 ? <div className="text-xs text-slate-400 italic">No achievements yet</div> : achievements.map(a => (
+          <div key={a.id} className="px-3 py-1 bg-yellow-50 text-yellow-800 rounded-full text-sm font-semibold">{a.title}</div>
+        ))}
+      </div>
       <div className="text-xs text-slate-500">Daily breakdown (date: sessions):</div>
       <div className="mt-2 max-h-40 overflow-auto text-sm border rounded p-2 bg-slate-50">
         {Object.entries(stats.byDay).length === 0 ? <div className="italic text-[12px] text-slate-400">No sessions in range</div> : Object.entries(stats.byDay).sort((a,b)=>b[0].localeCompare(a[0])).map(([d,c])=> (
