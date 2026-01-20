@@ -556,7 +556,7 @@ const App = () => {
                 <BrainCircuit className="w-20 h-20" />
               </div>
               <h2 className="text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" /> Sirf Ek Kaam (15 Min)
+                <CheckCircle2 className="w-4 h-4" /> {t('One Task (15 Min)','Sirf Ek Kaam (15 Min)')}
               </h2>
               <input 
                 type="text" 
@@ -649,8 +649,8 @@ const App = () => {
         ) : (
           <section className="space-y-4 animate-in fade-in slide-in-from-right-2">
              <div className="bg-blue-600 p-6 rounded-3xl text-white shadow-lg">
-                <h2 className="text-lg font-bold mb-1">Dream Parking Lot</h2>
-                <p className="text-xs text-blue-100 leading-relaxed">Inhe "Hold" par rakha hai taaki aaj aap shanti se kaam kar sakein.</p>
+               <h2 className="text-lg font-bold mb-1">{t('Dream Parking Lot','ड्रीम पार्किंग लॉट')}</h2>
+               <p className="text-xs text-blue-100 leading-relaxed">{t('These are parked so you can work peacefully today.','इन्हें "Hold" पर रखा है ताकि आप आज शांति से काम कर सकें।')}</p>
              </div>
              <div className="grid gap-3">
                {holdItems.map(item => (
@@ -668,9 +668,9 @@ const App = () => {
              </div>
              <div className="p-6 bg-pink-50 rounded-2xl border border-pink-100 mt-6 shadow-sm">
                 <h3 className="text-xs font-bold text-pink-700 uppercase mb-2 flex items-center gap-2">
-                  <Heart className="w-4 h-4" /> Family Corner
+                  <Heart className="w-4 h-4" /> {t('Family Corner','परिवार कोना')}
                 </h3>
-                <p className="text-xs text-pink-600 italic leading-relaxed">{familyMsg}</p>
+                <p className="text-xs text-pink-600 italic leading-relaxed">{t(familyMsg, familyMsg)}</p>
              </div>
           </section>
         )}
