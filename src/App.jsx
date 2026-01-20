@@ -48,6 +48,13 @@ const App = () => {
   const [greeting, setGreeting] = useState('');
   const [showAnalytics, setShowAnalytics] = useState(false);
 
+  // derived accent classes so theme changes apply across components
+  const accentBg = themeMode==='sunny' ? 'bg-yellow-500' : themeMode==='rainy' ? 'bg-blue-600' : themeMode==='sea' ? 'bg-teal-600' : 'bg-indigo-600';
+  const accentText = themeMode==='sunny' ? 'text-yellow-500' : themeMode==='rainy' ? 'text-blue-500' : themeMode==='sea' ? 'text-teal-500' : 'text-indigo-600';
+  const accentLight = themeMode==='sunny' ? 'bg-yellow-100' : themeMode==='rainy' ? 'bg-blue-100' : themeMode==='sea' ? 'bg-teal-100' : 'bg-indigo-100';
+  const accent50 = themeMode==='sunny' ? 'bg-yellow-50' : themeMode==='rainy' ? 'bg-blue-50' : themeMode==='sea' ? 'bg-teal-50' : 'bg-indigo-50';
+  const accentSoft = themeMode==='sunny' ? 'bg-yellow-400' : themeMode==='rainy' ? 'bg-blue-400' : themeMode==='sea' ? 'bg-teal-400' : 'bg-indigo-400';
+
   // App State
   const [mood, setMood] = useState(null);
   const [todayTask, setTodayTask] = useState("");
@@ -495,7 +502,7 @@ const App = () => {
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-100 p-4">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <BrainCircuit className="w-8 h-8 text-indigo-600" />
+            <BrainCircuit className={`w-8 h-8 ${accentText}`} />
             <div>
               <h1 className="text-lg font-bold text-slate-900 leading-none">{t('Mind Manager','माइंड मैनेजर')}</h1>
               <p className="text-[10px] text-slate-400 uppercase tracking-tighter">{t('Powered by Bitmenders','Bitmenders द्वारा संचालित')}</p>
@@ -503,7 +510,7 @@ const App = () => {
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
-              {syncStatus === 'syncing' && <RefreshCw className="w-3 h-3 text-indigo-500 animate-spin" />}
+              {syncStatus === 'syncing' && <RefreshCw className={`w-3 h-3 ${accentText} animate-spin`} />}
               {syncStatus === 'synced' && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
               {syncStatus === 'error' && <AlertCircle className="w-3 h-3 text-red-500" />}
             </div>
@@ -537,12 +544,12 @@ const App = () => {
         <div className="flex bg-white rounded-xl shadow-sm p-1 border border-slate-100">
           <button 
             onClick={() => setActiveTab('daily')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'daily' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}>
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'daily' ? `${accentBg} text-white shadow-md` : 'text-slate-400'}`}>
             {t('Today','आज')}
           </button>
           <button 
             onClick={() => setActiveTab('hold')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'hold' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}>
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'hold' ? `${accentBg} text-white shadow-md` : 'text-slate-400'}`}>
             {t('Hold List','होल्ड सूची')}
           </button>
         </div>
@@ -570,7 +577,7 @@ const App = () => {
             </section>
 
             {/* The Rule of One Task */}
-            <section className="bg-indigo-600 p-6 rounded-3xl shadow-xl shadow-indigo-200 text-white relative overflow-hidden">
+            <section className={`${accentBg} p-6 rounded-3xl shadow-xl text-white relative overflow-hidden`}>
               <div className="absolute top-0 right-0 p-4 opacity-10">
                 <BrainCircuit className="w-20 h-20" />
               </div>
@@ -580,26 +587,27 @@ const App = () => {
               <input 
                 type="text" 
                 placeholder={t('Today\'s most important task...','आज का सबसे जरूरी काम...')} 
-                className="w-full bg-indigo-500/30 border-none rounded-xl p-4 text-white placeholder:text-indigo-200 focus:ring-2 focus:ring-white mb-4 shadow-inner"
+                className="w-full rounded-xl p-4 text-white placeholder:text-white/80 mb-4 shadow-inner"
+                style={{ backgroundColor: 'rgba(255,255,255,0.08)', border: 'none' }}
                 value={todayTask}
                 onChange={(e) => {
                   setTodayTask(e.target.value);
                   saveData({ todayTask: e.target.value });
                 }}
               />
-              {todayTask && (
+                {todayTask && (
                 <button 
                   onClick={toggleTask}
-                  className={`w-full p-4 rounded-xl font-bold flex items-center justify-center gap-3 transition-all ${isTaskDone ? 'bg-white text-indigo-600 shadow-lg scale-95' : 'bg-indigo-400 text-white'}`}
+                  className={`w-full p-4 rounded-xl font-bold flex items-center justify-center gap-3 transition-all ${isTaskDone ? `bg-white ${accentText} shadow-lg scale-95` : `${accentSoft} text-white`}`}
                 >
                   {isTaskDone ? <><CheckCircle2 /> Kaam Ho Gaya!</> : 'Isse Poora Karein'}
                 </button>
               )}
                   {/* Pomodoro component (lazy-loaded) */}
                   <Suspense fallback={<div className="mt-4 p-4 bg-white rounded-2xl text-center">{t('Loading timer…','टाइमर लोड हो रहा है…')}</div>}>
-                    <Pomodoro onSessionComplete={(count) => {
-                      try { saveData({ lastPomodoroCount: count }); } catch {}
-                    }} t={t} />
+                      <Pomodoro onSessionComplete={(count) => {
+                        try { saveData({ lastPomodoroCount: count }); } catch {}
+                      }} t={t} accent={accentBg} accentText={accentText} accentLight={accentLight} />
                   </Suspense>
             </section>
 
@@ -617,14 +625,14 @@ const App = () => {
                   onChange={(e) => setNoiseInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && addNoise()}
                 />
-                <button onClick={addNoise} className="bg-indigo-600 p-3 rounded-xl text-white shadow-md active:scale-90 transition-transform">
+                <button onClick={addNoise} className={`${accentBg} p-3 rounded-xl text-white shadow-md active:scale-90 transition-transform`}>
                   <PlusCircle className="w-6 h-6" />
                 </button>
               </div>
               <div className="space-y-3 max-h-60 overflow-y-auto pr-2 no-scrollbar">
                 {noiseList.map(item => (
                   <div key={item.id} className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100 group animate-in slide-in-from-left-2">
-                    <div className="w-2 h-2 bg-indigo-400 rounded-full"></div>
+                    <div className={`w-2 h-2 ${accentSoft} rounded-full`}></div>
                     <span className="flex-1 text-sm text-slate-600 font-medium">{item.text}</span>
                     <button onClick={() => deleteNoise(item.id)} className="p-1 hover:text-red-500 text-slate-300">
                       <Trash2 className="w-4 h-4" />
@@ -652,19 +660,19 @@ const App = () => {
                <div className="flex gap-2 mb-4">
                  <input placeholder={t('Add new hold item...','नया होल्ड आइटम जोड़ें...')} className="flex-1 p-3 bg-slate-50 rounded-xl border-none text-sm" id="hold-new-input-tab" />
                  <input placeholder={t('Icon (emoji)','Icon (इमोजी)')} id="hold-new-icon-tab" className="w-24 p-3 bg-slate-50 rounded-xl border-none text-sm" />
-                 <button onClick={() => { const el = document.getElementById('hold-new-input-tab'); const ic = document.getElementById('hold-new-icon-tab'); if (el) { addHoldItem(el.value, ic ? ic.value : '📝'); el.value=''; if (ic) ic.value=''; } }} className="bg-indigo-600 p-3 rounded-xl text-white shadow-md">{t('Add','जोड़ें')}</button>
+                 <button onClick={() => { const el = document.getElementById('hold-new-input-tab'); const ic = document.getElementById('hold-new-icon-tab'); if (el) { addHoldItem(el.value, ic ? ic.value : '📝'); el.value=''; if (ic) ic.value=''; } }} className={`${accentBg} p-3 rounded-xl text-white shadow-md`}>{t('Add','जोड़ें')}</button>
                </div>
                {holdItems.map(item => (
                  <div key={item.id} className="flex items-center gap-4 p-5 bg-white rounded-2xl shadow-sm border border-slate-100">
-                   <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+                   <div className={`${accent50} w-12 h-12 rounded-2xl flex items-center justify-center ${accentText}`}>
                      {getIcon(item.icon)}
                    </div>
                    <div className="flex-1">
                      <h3 className="text-sm font-bold text-slate-800">{item.title}</h3>
-                     <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-widest mt-0.5">{item.status}</p>
+                     <p className={`text-[10px] ${accentText} font-bold uppercase tracking-widest mt-0.5`}>{item.status}</p>
                    </div>
                    <div className="flex flex-col items-end gap-2">
-                     <button onClick={() => { setTodayTask(item.title); removeHoldItem(item.id); saveData({ todayTask: item.title }); }} className="px-2 py-1 text-xs bg-indigo-600 text-white rounded-md">{t('Move to Today','आज पर ले जाएँ')}</button>
+                     <button onClick={() => { setTodayTask(item.title); removeHoldItem(item.id); saveData({ todayTask: item.title }); }} className={`px-2 py-1 text-xs ${accentBg} text-white rounded-md`}>{t('Move to Today','आज पर ले जाएँ')}</button>
                      <span className="text-[10px] bg-slate-100 px-2 py-1 rounded-md text-slate-400 font-bold">SAVED</span>
                    </div>
                  </div>
@@ -702,42 +710,42 @@ const App = () => {
                   <h3 className="text-sm font-bold">{t('Auto Cloud Sync','ऑटो क्लाउड सिंक')}</h3>
                   <p className="text-xs text-slate-500">{t('Always on (Anonymous Auth)','हमेशा चालू (गुमनाम ऑथ)')}</p>
                 </div>
-                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase ${syncStatus === 'synced' ? 'bg-green-100 text-green-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase ${syncStatus === 'synced' ? 'bg-green-100 text-green-700' : `${accentLight} ${accentText.replace('text-','text-')}`}`}>
                   {syncStatus === 'synced' ? <><Check className="w-3 h-3"/> Connected</> : 'Syncing...'}
                 </div>
               </div>
 
               {/* Install PWA Instruction */}
-              <div className="p-4 border-2 border-indigo-50 rounded-2xl bg-indigo-50/30">
+              <div className={`p-4 border-2 rounded-2xl`} style={{ backgroundColor: 'rgba(249,250,251,0.6)' }}>
                 <h3 className="text-sm font-bold mb-1 text-indigo-900">{t('Install to Mobile Home Screen','मोबाइल होम स्क्रीन पर इंस्टॉल करें')}</h3>
                 <p className="text-xs text-indigo-700 mb-2">{t('Use browser menu -> Add to Home Screen','ब्राउज़र मेनू -> Add to Home Screen चुनें')}</p>
                 <p className="text-[10px] text-indigo-500 italic">{t('This lets the app run like a real app without the browser.','यह ऐप को बिना ब्राउज़र के असली ऐप की तरह चलने देगा।')}</p>
                 {deferredPrompt && (
                   <div className="mt-3">
-                    <button onClick={promptInstall} className="w-full px-3 py-2 bg-indigo-600 text-white rounded-lg">Install App</button>
+                    <button onClick={promptInstall} className={`w-full px-3 py-2 ${accentBg} text-white rounded-lg`}>Install App</button>
                   </div>
                 )}
                 {!deferredPrompt && (
-                  <div className="mt-3 text-[10px] text-indigo-600">Install via browser menu if available.</div>
+                  <div className={`mt-3 text-[10px] ${accentText}`}>Install via browser menu if available.</div>
                 )}
               </div>
 
               {/* Data Management */}
-              <div className="space-y-3">
+                <div className="space-y-3">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('Data Management','डेटा प्रबंधन')}</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <button 
                     onClick={exportData}
                     className="flex flex-col items-center justify-center p-4 bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 hover:bg-indigo-50 transition-all gap-2 shadow-sm"
                   >
-                    <Download className="w-6 h-6 text-indigo-600" />
+                    <Download className={`w-6 h-6 ${accentText}`} />
                     <span className="text-xs font-bold">{t('Manual Backup','मैनुअल बैकअप')}</span>
                   </button>
                   <button 
                     onClick={() => fileInputRef.current.click()}
                     className="flex flex-col items-center justify-center p-4 bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 hover:bg-indigo-50 transition-all gap-2 shadow-sm"
                   >
-                    <Upload className="w-6 h-6 text-indigo-600" />
+                    <Upload className={`w-6 h-6 ${accentText}`} />
                     <span className="text-xs font-bold">{t('Restore Backup','बैकअप पुनर्स्थापित करें')}</span>
                   </button>
                   <input 
@@ -769,12 +777,12 @@ const App = () => {
               <div className="space-y-2">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Theme</h3>
                 <div className="flex gap-2">
-                  <button onClick={() => { setThemeMode('default'); localStorage.setItem('dmm_theme', 'default'); }} className={`flex-1 p-2 rounded-2xl ${themeMode==='default'?'bg-indigo-100':'bg-white'}`}>Default</button>
-                  <button onClick={() => { setThemeMode('sunny'); localStorage.setItem('dmm_theme', 'sunny'); }} className={`flex-1 p-2 rounded-2xl ${themeMode==='sunny'?'bg-indigo-100':'bg-white'}`}>Sunny</button>
-                  <button onClick={() => { setThemeMode('rainy'); localStorage.setItem('dmm_theme', 'rainy'); }} className={`flex-1 p-2 rounded-2xl ${themeMode==='rainy'?'bg-indigo-100':'bg-white'}`}>Rainy</button>
+                  <button onClick={() => { setThemeMode('default'); localStorage.setItem('dmm_theme', 'default'); }} className={`flex-1 p-2 rounded-2xl ${themeMode==='default'?accentLight:'bg-white'}`}>Default</button>
+                  <button onClick={() => { setThemeMode('sunny'); localStorage.setItem('dmm_theme', 'sunny'); }} className={`flex-1 p-2 rounded-2xl ${themeMode==='sunny'?accentLight:'bg-white'}`}>Sunny</button>
+                  <button onClick={() => { setThemeMode('rainy'); localStorage.setItem('dmm_theme', 'rainy'); }} className={`flex-1 p-2 rounded-2xl ${themeMode==='rainy'?accentLight:'bg-white'}`}>Rainy</button>
                 </div>
                 <div className="flex gap-2 mt-2">
-                  <button onClick={() => { setThemeMode('sea'); localStorage.setItem('dmm_theme', 'sea'); }} className={`flex-1 p-2 rounded-2xl ${themeMode==='sea'?'bg-indigo-100':'bg-white'}`}>Sea</button>
+                  <button onClick={() => { setThemeMode('sea'); localStorage.setItem('dmm_theme', 'sea'); }} className={`flex-1 p-2 rounded-2xl ${themeMode==='sea'?accentLight:'bg-white'}`}>Sea</button>
                 </div>
               </div>
 
@@ -794,9 +802,9 @@ const App = () => {
               <button onClick={() => setShowScorecard(false)} className="p-2">Close</button>
             </div>
             <div className="flex gap-2 mb-4">
-              <button onClick={() => setScoreRange('7d')} className="px-3 py-2 bg-indigo-50 rounded">1 week</button>
-              <button onClick={() => setScoreRange('30d')} className="px-3 py-2 bg-indigo-50 rounded">1 month</button>
-              <button onClick={() => setScoreRange('90d')} className="px-3 py-2 bg-indigo-50 rounded">3 months</button>
+              <button onClick={() => setScoreRange('7d')} className={`px-3 py-2 ${accent50} rounded`}>1 week</button>
+              <button onClick={() => setScoreRange('30d')} className={`px-3 py-2 ${accent50} rounded`}>1 month</button>
+              <button onClick={() => setScoreRange('90d')} className={`px-3 py-2 ${accent50} rounded`}>3 months</button>
               <button onClick={() => setScoreRange('180d')} className="px-3 py-2 bg-indigo-50 rounded">6 months</button>
             </div>
             <ScorecardContent rangeKey={scoreRange} computeStats={computeStats} />
@@ -937,12 +945,12 @@ function FloatingPomodoro() {
         <div className="mb-3">
           <div className="bg-white rounded-2xl p-2 shadow">
             <Suspense fallback={<div className="p-2">Loading...</div>}>
-              <Pomodoro compact={true} t={(a,b)=>a} />
+              <Pomodoro compact={true} t={(a,b)=>a} accent={accentBg} accentText={accentText} accentLight={accentLight} />
             </Suspense>
           </div>
         </div>
       )}
-      <button onClick={() => setOpen(o=>!o)} className="w-12 h-12 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center">{open? '✕' : '🍅'}</button>
+      <button onClick={() => setOpen(o=>!o)} className={`w-12 h-12 rounded-full ${accentBg} text-white shadow-lg flex items-center justify-center`}>{open? '✕' : '🍅'}</button>
     </div>
   );
 }
