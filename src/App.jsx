@@ -686,7 +686,7 @@ const App = () => {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-xl font-bold">Settings & Backup</h2>
+              <h2 className="text-xl font-bold">{t('Settings & Backup','सेटिंग्स और बैकअप')}</h2>
               <button onClick={() => setShowSettings(false)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200">
                 <X className="w-5 h-5 text-slate-500" />
               </button>
@@ -695,8 +695,8 @@ const App = () => {
               {/* Cloud Sync Status */}
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <div>
-                  <h3 className="text-sm font-bold">Auto Cloud Sync</h3>
-                  <p className="text-xs text-slate-500">Hamesha on rehta hai (Anonymous Auth)</p>
+                  <h3 className="text-sm font-bold">{t('Auto Cloud Sync','ऑटो क्लाउड सिंक')}</h3>
+                  <p className="text-xs text-slate-500">{t('Always on (Anonymous Auth)','हमेशा चालू (गुमनाम ऑथ)')}</p>
                 </div>
                 <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase ${syncStatus === 'synced' ? 'bg-green-100 text-green-700' : 'bg-indigo-100 text-indigo-700'}`}>
                   {syncStatus === 'synced' ? <><Check className="w-3 h-3"/> Connected</> : 'Syncing...'}
@@ -705,9 +705,9 @@ const App = () => {
 
               {/* Install PWA Instruction */}
               <div className="p-4 border-2 border-indigo-50 rounded-2xl bg-indigo-50/30">
-                <h3 className="text-sm font-bold mb-1 text-indigo-900">Install to Mobile Home Screen</h3>
-                <p className="text-xs text-indigo-700 mb-2">Browser menu mein "Add to Home Screen" select karein.</p>
-                <p className="text-[10px] text-indigo-500 italic">Issey ye app bina browser ke asli app ki tarah chalegi.</p>
+                <h3 className="text-sm font-bold mb-1 text-indigo-900">{t('Install to Mobile Home Screen','मोबाइल होम स्क्रीन पर इंस्टॉल करें')}</h3>
+                <p className="text-xs text-indigo-700 mb-2">{t('Use browser menu -> Add to Home Screen','ब्राउज़र मेनू -> Add to Home Screen चुनें')}</p>
+                <p className="text-[10px] text-indigo-500 italic">{t('This lets the app run like a real app without the browser.','यह ऐप को बिना ब्राउज़र के असली ऐप की तरह चलने देगा।')}</p>
                 {deferredPrompt && (
                   <div className="mt-3">
                     <button onClick={promptInstall} className="w-full px-3 py-2 bg-indigo-600 text-white rounded-lg">Install App</button>
@@ -720,21 +720,21 @@ const App = () => {
 
               {/* Data Management */}
               <div className="space-y-3">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Data Management</h3>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('Data Management','डेटा प्रबंधन')}</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <button 
                     onClick={exportData}
                     className="flex flex-col items-center justify-center p-4 bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 hover:bg-indigo-50 transition-all gap-2 shadow-sm"
                   >
                     <Download className="w-6 h-6 text-indigo-600" />
-                    <span className="text-xs font-bold">Manual Backup</span>
+                    <span className="text-xs font-bold">{t('Manual Backup','मैनुअल बैकअप')}</span>
                   </button>
                   <button 
                     onClick={() => fileInputRef.current.click()}
                     className="flex flex-col items-center justify-center p-4 bg-white border border-slate-200 rounded-2xl hover:border-indigo-300 hover:bg-indigo-50 transition-all gap-2 shadow-sm"
                   >
                     <Upload className="w-6 h-6 text-indigo-600" />
-                    <span className="text-xs font-bold">Restore Backup</span>
+                    <span className="text-xs font-bold">{t('Restore Backup','बैकअप पुनर्स्थापित करें')}</span>
                   </button>
                   <input 
                     type="file" 
@@ -754,9 +754,9 @@ const App = () => {
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Notifications</h3>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t('Notifications','नोटिफिकेशन')}</h3>
                 <div className="flex gap-2">
-                  <button onClick={requestNotifications} className="flex-1 p-2 bg-white border rounded-2xl">Enable Notifications</button>
+                  <button onClick={requestNotifications} className="flex-1 p-2 bg-white border rounded-2xl">{t('Enable Notifications','नोटिफिकेशन सक्षम करें')}</button>
                   <div className="px-3 py-2 rounded-2xl bg-slate-50 text-[10px]">{notifPermission}</div>
                 </div>
               </div>
