@@ -27,13 +27,14 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          # Deploy the built `dist` directory to Vercel using the provided token.
-          # Capture the deployment URL and expose it for subsequent steps.
+          # Deploy the built `dist` directory to Vercel using the provided token
+          # and explicitly target the existing `dist` project to avoid creating
+          # a new project with an auto-generated name.
           set -euo pipefail
-          DEPLOY_OUT=$(npx vercel --prod ./dist --token "$VERCEL_TOKEN" --yes 2>&1)
+          DEPLOY_OUT=$(npx vercel --prod ./dist --token "$VERCEL_TOKEN" --yes --project dist 2>&1)
           echo "deploy output:\n$DEPLOY_OUT"
-          # extract the first production URL from output (matches https://...)
-          DEPLOY_URL=$(echo "$DEPLOY_OUT" | grep -Eo "https?://[a-zA-Z0-9._-]+\.vercel\.app" | head -n1 || true)
+          # extract a production URL from output (first https://... occurrence)
+          DEPLOY_URL=$(echo "$DEPLOY_OUT" | grep -Eo "https?://[a-zA-Z0-9._-]+(\.vercel\.app|\.[a-zA-Z0-9._-]+)" | head -n1 || true)
           if [ -z "$DEPLOY_URL" ]; then
             echo "Failed to get deployment URL from vercel output" >&2
             exit 1
