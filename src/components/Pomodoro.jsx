@@ -312,7 +312,7 @@ export default function Pomodoro({ onSessionComplete, t: _t, compact=false }) {
     <div className={`bg-white p-4 rounded-2xl shadow mt-4 ${compact?'w-48 p-3':''}`}>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-sm font-bold">{tt('Pomodoro','पोमोडोरो')}</h3>
+          <h3 className="text-sm font-bold" aria-label="Pomodoro">{tt('Pomodoro','पोमोडोरो')}</h3>
           {!compact && <p className="text-xs text-slate-400">{tt('Work focused sessions with short breaks','छोटे ब्रेक के साथ कार्य सत्र')}</p>}
         </div>
         <div className="text-xs text-slate-500">{tt('Completed','पूरा हुआ')}: <span className="font-bold">{completedSessions}</span></div>
