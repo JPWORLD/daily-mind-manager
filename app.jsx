@@ -50,7 +50,7 @@ const App = () => {
     { id: 4, title: "iPhone & Investments", status: "Hold", icon: "Heart" }
   ]);
   const [aqiData, setAqiData] = useState(null);
-  const [noiseInput, setNoiseInput] = useState("");
+  const [blogPosts, setBlogPosts] = useState([]);
 
   const fileInputRef = useRef(null);
 
@@ -132,7 +132,18 @@ const App = () => {
 
   useEffect(() => {
     if (activeTab === 'aqi') fetchAQI();
+    if (activeTab === 'inspire') fetchBlogPosts();
   }, [activeTab]);
+
+  const fetchBlogPosts = async () => {
+    try {
+      const res = await fetch('/api/posts');
+      const posts = await res.json();
+      setBlogPosts(posts);
+    } catch (err) {
+      console.error('Blog fetch error', err);
+    }
+  };
 
   // Actions
   const addNoise = () => {
@@ -253,6 +264,12 @@ const App = () => {
             className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'aqi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
           >
             Air Quality
+          </button>
+          <button 
+            onClick={() => setActiveTab('inspire')}
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'inspire' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}
+          >
+            Inspire
           </button>
         </div>
 
@@ -393,6 +410,25 @@ const App = () => {
               </div>
             ) : (
               <p className="text-center text-slate-500">Loading AQI data...</p>
+            )}
+          </section>
+        )}
+
+        {activeTab === 'inspire' && (
+          <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 animate-in fade-in slide-in-from-bottom-2">
+            <h2 className="text-lg font-bold text-slate-900 mb-4">Inspiration from Our Blog</h2>
+            {blogPosts.length > 0 ? (
+              <div className="space-y-4">
+                {blogPosts.map(post => (
+                  <div key={post.id} className="p-4 border border-slate-200 rounded-lg">
+                    <h3 className="text-md font-bold text-slate-800">{post.title}</h3>
+                    <p className="text-sm text-slate-600 mt-1">{post.content.substring(0, 100)}...</p>
+                    <a href={`/blog/${post.slug}.html`} className="text-indigo-600 text-sm mt-2 inline-block">Read more</a>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-slate-500">Loading blog posts...</p>
             )}
           </section>
         )}
