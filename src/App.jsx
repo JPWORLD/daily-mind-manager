@@ -95,10 +95,10 @@ const App = () => {
         if (s.isTaskDone !== undefined) setIsTaskDone(s.isTaskDone);
         if (s.noiseList) setNoiseList(s.noiseList);
         if (s.holdItems) setHoldItems(s.holdItems);
-      } else {
-        // first-time onboarding if username not set
-        const seen = localStorage.getItem('dmm_seen_onboarding');
-        if (!seen || !username) setShowOnboarding(true);
+      }
+      // ensure onboarding appears if username empty (do not rely on seen flag)
+      if (!localStorage.getItem('dmm_username') || !localStorage.getItem('dmm_username').trim()) {
+        setShowOnboarding(true);
       }
     } catch (e) {
       console.error('load local state failed', e);
@@ -498,7 +498,7 @@ const App = () => {
             <BrainCircuit className="w-8 h-8 text-indigo-600" />
             <div>
               <h1 className="text-lg font-bold text-slate-900 leading-none">{t('Mind Manager','माइंड मैनेजर')}</h1>
-              <p className="text-[10px] text-slate-400 uppercase tracking-tighter">{t('Powered by Cloud Sync','क्लाउड सिंक के साथ')}</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-tighter">{t('Powered by Bitmenders','Bitmenders द्वारा संचालित')}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -509,9 +509,12 @@ const App = () => {
             </div>
             <div className="flex items-center gap-3">
               {temperature !== null && <div className="text-sm text-slate-600">{temperature}°C</div>}
-              <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-slate-100 rounded-full">
-                <Settings className="w-5 h-5 text-slate-500" />
-              </button>
+              <button onClick={() => setShowScorecard(true)} className="p-2 hover:bg-slate-100 rounded-full" title={t('Scorecard','स्कोरकार्ड')}>
+                    <CheckCircle2 className="w-5 h-5 text-slate-500" />
+                  </button>
+                  <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-slate-100 rounded-full">
+                    <Settings className="w-5 h-5 text-slate-500" />
+                  </button>
               <button onClick={() => {
                   const modes = ['default','sunny','rainy','sea'];
                   const idx = modes.indexOf(themeMode);
@@ -637,33 +640,7 @@ const App = () => {
               </div>
             </section>
             
-            {/* Hold list quick add */}
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-              <h2 className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-widest">{t('Hold List','होल्ड सूची')}</h2>
-              <div className="flex gap-2 mb-4">
-                <input placeholder={t('Add new hold item...','नया होल्ड आइटम जोड़ें...')} className="flex-1 p-3 bg-slate-50 rounded-xl border-none text-sm" id="hold-new-input" />
-                <input placeholder={t('Icon (emoji)','Icon (इमोजी)')} id="hold-new-icon" className="w-24 p-3 bg-slate-50 rounded-xl border-none text-sm" />
-                <button onClick={() => { const el = document.getElementById('hold-new-input'); const ic = document.getElementById('hold-new-icon'); if (el) { addHoldItem(el.value, ic ? ic.value : '📝'); el.value=''; if (ic) ic.value=''; } }} className="bg-indigo-600 p-3 rounded-xl text-white shadow-md">{t('Add','जोड़ें')}</button>
-              </div>
-              <div className="grid gap-3">
-                {holdItems.map(item => (
-                  <div key={item.id} className="flex items-center gap-4 p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="w-10 h-10 bg-white rounded-md flex items-center justify-center text-lg">
-                      {['Music','Car','Cloud','Smartphone'].includes(item.icon) ? getIcon(item.icon) : <span className="text-lg">{item.icon}</span>}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-sm font-bold text-slate-800">{item.title}</h3>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => { setTodayTask(item.title); updateHoldItem(item.id, { status: 'Moved' }); removeHoldItem(item.id); saveData({ todayTask: item.title }); }} className="p-2 bg-white rounded">{t('Move','ले जाएँ')}</button>
-                      <button onClick={() => { const newTitle = prompt(t('Edit title','शीर्षक संपादित करें'), item.title); if (newTitle !== null) updateHoldItem(item.id, { title: newTitle }); }} className="p-2 bg-white rounded">{t('Edit','संपादित')}</button>
-                      <button onClick={() => { const newIcon = prompt(t('Update icon (emoji)','इकॉन अपडेट करें (इमोजी)'), item.icon); if (newIcon !== null) updateHoldItem(item.id, { icon: newIcon }); }} className="p-2 bg-white rounded">{t('Icon','इकॉन')}</button>
-                      <button onClick={() => removeHoldItem(item.id)} className="p-2 bg-red-100 text-red-600 rounded">{t('Delete','हटा दें')}</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
+            {/* Hold list moved to Hold tab to keep Today focused */}
           </>
         ) : (
           <section className="space-y-4 animate-in fade-in slide-in-from-right-2">
@@ -672,6 +649,11 @@ const App = () => {
                <p className="text-xs text-blue-100 leading-relaxed">{t('These are parked so you can work peacefully today.','इन्हें "Hold" पर रखा है ताकि आप आज शांति से काम कर सकें।')}</p>
              </div>
              <div className="grid gap-3">
+               <div className="flex gap-2 mb-4">
+                 <input placeholder={t('Add new hold item...','नया होल्ड आइटम जोड़ें...')} className="flex-1 p-3 bg-slate-50 rounded-xl border-none text-sm" id="hold-new-input-tab" />
+                 <input placeholder={t('Icon (emoji)','Icon (इमोजी)')} id="hold-new-icon-tab" className="w-24 p-3 bg-slate-50 rounded-xl border-none text-sm" />
+                 <button onClick={() => { const el = document.getElementById('hold-new-input-tab'); const ic = document.getElementById('hold-new-icon-tab'); if (el) { addHoldItem(el.value, ic ? ic.value : '📝'); el.value=''; if (ic) ic.value=''; } }} className="bg-indigo-600 p-3 rounded-xl text-white shadow-md">{t('Add','जोड़ें')}</button>
+               </div>
                {holdItems.map(item => (
                  <div key={item.id} className="flex items-center gap-4 p-5 bg-white rounded-2xl shadow-sm border border-slate-100">
                    <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">

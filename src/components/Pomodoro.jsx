@@ -235,17 +235,27 @@ export default function Pomodoro({ onSessionComplete, t: _t, compact=false }) {
 
   // custom time input (minutes)
   const [customMinutes, setCustomMinutes] = useState('');
+  const [showIntro, setShowIntro] = useState(true);
 
   const applyCustomMinutes = () => {
     try {
       const m = Math.max(1, Number(customMinutes));
       if (!isNaN(m)) {
+        // update config so the circle uses the correct total duration
+        const newConfig = { ...config, work: m * 60 };
+        saveConfig(newConfig);
         setMode('work');
         setRemaining(m * 60);
         setRunning(false);
       }
     } catch (e) {}
   };
+
+  useEffect(() => {
+    // show a small intro pulse once to highlight the Pomodoro area
+    const t = setTimeout(() => setShowIntro(false), 1700);
+    return () => clearTimeout(t);
+  }, []);
 
   const saveConfig = (newConfig) => {
     setConfig(newConfig);
@@ -331,7 +341,8 @@ export default function Pomodoro({ onSessionComplete, t: _t, compact=false }) {
   const tt = (a,b) => { if (typeof _t === 'function') return _t(a,b); return a; };
 
   return (
-    <div className={`bg-white p-4 rounded-2xl shadow mt-4 ${compact?'w-48 p-3':''}`}>
+      <div className={`bg-white p-4 rounded-2xl shadow mt-4 ${compact?'w-48 p-3':''}`}>
+        <style>{`@keyframes pulseOnce { 0% { transform: scale(0.95); opacity: 1 } 100% { transform: scale(1.25); opacity: 0 } }`}</style>
       <div className="flex items-center justify-between mb-3">
         <div>
           <h3 className="text-sm font-bold" aria-label="Pomodoro">{tt('Pomodoro','पोमोडोरो')}</h3>
@@ -342,6 +353,11 @@ export default function Pomodoro({ onSessionComplete, t: _t, compact=false }) {
 
       <div className="flex flex-col items-center gap-3">
         <div className="relative">
+          {showIntro && (
+            <div style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)'}}>
+              <div style={{width:170,height:170,borderRadius:9999,background:'rgba(99,102,241,0.12)',animation:'pulseOnce 1.2s ease-out forwards'}} />
+            </div>
+          )}
           <svg width="120" height="120" className="block">
             <circle cx="60" cy="60" r="52" stroke="#e6edf7" strokeWidth="12" fill="none" />
             <circle cx="60" cy="60" r="52" stroke="#6366f1" strokeWidth="12" strokeLinecap="round" fill="none"
