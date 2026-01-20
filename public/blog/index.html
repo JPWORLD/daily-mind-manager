@@ -10,34 +10,32 @@
   <body>
     <h1>Daily Mind Manager — Blog</h1>
 
-    <div class="cards">
-      <a class="card" href="/blog/post-1.html">
-        <img class="card-img" src="/pwa-192.png" alt="Pomodoro" />
-        <div class="card-body">
-          <h2 class="card-title">How to get started with 25-minute Pomodoros</h2>
-          <p class="card-excerpt">A simple, focused approach to get into a productive flow — practical tips to start today.</p>
-          <div class="card-meta">Jan 15, 2026 · 4 min read</div>
-        </div>
-      </a>
-
-      <a class="card" href="/blog/post-2.html">
-        <img class="card-img" src="/pwa-192.png" alt="Habits" />
-        <div class="card-body">
-          <h2 class="card-title">Small habits that compound — a 30 day plan</h2>
-          <p class="card-excerpt">A realistic 30-day plan to build micro-habits that stack into meaningful progress.</p>
-          <div class="card-meta">Dec 28, 2025 · 5 min read</div>
-        </div>
-      </a>
-
-      <a class="card" href="/blog/post-3.html">
-        <img class="card-img" src="/pwa-192.png" alt="Ambient" />
-        <div class="card-body">
-          <h2 class="card-title">Using ambient sounds to improve focus</h2>
-          <p class="card-excerpt">How curated background noise and structured breaks improve concentration for short sessions.</p>
-          <div class="card-meta">Nov 04, 2025 · 3 min read</div>
-        </div>
-      </a>
+    <div id="cards" class="cards">
+      <!-- Cards will be loaded here -->
     </div>
+
+    <script>
+      async function loadPosts() {
+        try {
+          const res = await fetch('/api/posts');
+          const posts = await res.json();
+          const cardsEl = document.getElementById('cards');
+          cardsEl.innerHTML = posts.map(post => `
+            <a class="card" href="/blog/${post.slug}.html">
+              <img class="card-img" src="${post.image || '/pwa-192.png'}" alt="${post.title}" />
+              <div class="card-body">
+                <h2 class="card-title">${post.title}</h2>
+                <p class="card-excerpt">${post.content.substring(0, 100)}...</p>
+                <div class="card-meta">${new Date(post.createdAt).toLocaleDateString()} · 4 min read</div>
+              </div>
+            </a>
+          `).join('');
+        } catch (e) {
+          console.error('Failed to load posts', e);
+        }
+      }
+      loadPosts();
+    </script>
 
     <style>
       :root{--card-bg:#fff;--muted:#64748b}

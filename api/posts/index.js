@@ -59,15 +59,15 @@ module.exports = async (req, res) => {
     // Basic create - support both raw stream and express.json() parsed body
     const handleCreate = async (data) => {
       try {
-        const { title, slug, content, published } = data;
+        const { title, slug, content, published, image } = data;
         if (prisma) {
-          const post = await prisma.post.create({ data: { title, slug, content, published: !!published } });
+          const post = await prisma.post.create({ data: { title, slug, content, published: !!published, image } });
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(post));
         } else {
           const posts = readPosts();
           const id = (posts.length ? posts[posts.length-1].id + 1 : 1);
-          const entry = { id, title, slug, content, published: !!published, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+          const entry = { id, title, slug, content, published: !!published, image, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
           posts.push(entry); writePosts(posts);
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(entry));
