@@ -43,6 +43,7 @@ const App = () => {
   const [lang, setLang] = useState(localStorage.getItem('dmm_lang') || 'en'); // 'en' | 'hi'
   const [temperature, setTemperature] = useState(null);
   const [themeMode, setThemeMode] = useState('default'); // e.g., sunny, rainy, sea, default
+  const [greeting, setGreeting] = useState('');
 
   // App State
   const [mood, setMood] = useState(null);
@@ -99,6 +100,61 @@ const App = () => {
     } catch (e) {
       console.error('load local state failed', e);
     }
+  }, []);
+
+  // load greetings (try remote && cache fallback) and rotate index
+  useEffect(() => {
+    const local = localStorage.getItem('dmm_greetings');
+    const pickFrom = (arr) => {
+      if (!arr || !arr.length) return '';
+      // prefer time-based greeting by hour
+      const h = new Date().getHours();
+      let candidates = arr.filter(q => !!q && typeof q === 'string');
+      if (!candidates.length) candidates = arr.map(a=>a.text||a);
+      const idxKey = 'dmm_greeting_index';
+      let idx = Number(localStorage.getItem(idxKey) || 0) % candidates.length;
+      const msg = candidates[idx];
+      idx = (idx + 1) % candidates.length;
+      localStorage.setItem(idxKey, String(idx));
+      return msg || '';
+    };
+
+    (async () => {
+      try {
+        if (!local) {
+          const res = await fetch('https://type.fit/api/quotes');
+          if (res.ok) {
+            const data = await res.json();
+            const texts = data.slice(0, 40).map(d => (d && d.text) ? d.text : '').filter(Boolean);
+            if (texts.length) {
+              localStorage.setItem('dmm_greetings', JSON.stringify(texts));
+              setGreeting(pickFrom(texts));
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        // network failed, fall through to cached or local fallback
+      }
+
+      try {
+        const cached = localStorage.getItem('dmm_greetings');
+        if (cached) {
+          const a = JSON.parse(cached);
+          setGreeting(pickFrom(a));
+          return;
+        }
+      } catch (e) {}
+
+      // fallback greetings
+      const fallback = [
+        'Good morning — make today count!',
+        'Hello — small steps add up.',
+        'Hi there — one focused session at a time.',
+        'Greetings — breathe and begin.'
+      ];
+      setGreeting(pickFrom(fallback));
+    })();
   }, []);
 
   // Persist local app state as a fallback
@@ -363,6 +419,17 @@ const App = () => {
   // Simple translation helper
   const t = (en, hi) => (lang === 'hi' ? (hi || en) : en);
 
+  // family corner rotating messages
+  const familyMessages = [
+    '"Main ghar ke tanav ko solve nahi kar sakta, main sirf apni pragati par focus kar sakta hoon."',
+    '"Parivar ka pyaar hi asli sahara hai — chhote kadam roz hain."',
+    '"Rishton ko samay dein, lekin aaj par dhyan rakhein."'
+  ];
+  const familyMsgIndex = Number(localStorage.getItem('dmm_family_msg_index') || 0) % familyMessages.length;
+  const familyMsg = familyMessages[familyMsgIndex];
+  // increment for next load
+  useEffect(() => { try { localStorage.setItem('dmm_family_msg_index', String((familyMsgIndex + 1) % familyMessages.length)); } catch(e){} }, []);
+
   // Render Helpers
   const getIcon = (iconName) => {
     switch(iconName) {
@@ -375,7 +442,7 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-20">
+    <div className={`min-h-screen bg-slate-50 text-slate-800 font-sans pb-20 ${themeMode==='sunny'?'theme-sunny':''} ${themeMode==='rainy'?'theme-rainy':''} ${themeMode==='sea'?'theme-sea':''}`}>
       <style>{`
         body { -webkit-tap-highlight-color: transparent; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -394,7 +461,7 @@ const App = () => {
               <p className="text-[10px] text-slate-400 uppercase tracking-tighter">{t('Powered by Cloud Sync','क्लाउड सिंक के साथ')}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
               {syncStatus === 'syncing' && <RefreshCw className="w-3 h-3 text-indigo-500 animate-spin" />}
               {syncStatus === 'synced' && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
@@ -403,9 +470,9 @@ const App = () => {
             <div className="flex items-center gap-3">
               {temperature !== null && <div className="text-sm text-slate-600">{temperature}°C</div>}
               <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-slate-100 rounded-full">
-              <Settings className="w-5 h-5 text-slate-500" />
-            </button>
-              <div className="text-xs text-slate-500">{username ? username : ''}</div>
+                <Settings className="w-5 h-5 text-slate-500" />
+              </button>
+              <div className="text-xs text-slate-500 flex items-center gap-2">{username ? username : ''} {greeting ? <span className="text-[10px] text-slate-400 italic">{greeting}</span> : null}</div>
             </div>
           </div>
         </div>
@@ -566,7 +633,7 @@ const App = () => {
                 <h3 className="text-xs font-bold text-pink-700 uppercase mb-2 flex items-center gap-2">
                   <Heart className="w-4 h-4" /> Family Corner
                 </h3>
-                <p className="text-xs text-pink-600 italic leading-relaxed">"Main ghar ke tanav ko solve nahi kar sakta, main sirf apni pragati par focus kar sakta hoon."</p>
+                <p className="text-xs text-pink-600 italic leading-relaxed">{familyMsg}</p>
              </div>
           </section>
         )}
@@ -645,6 +712,18 @@ const App = () => {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Theme</h3>
+                <div className="flex gap-2">
+                  <button onClick={() => { setThemeMode('default'); localStorage.setItem('dmm_theme', 'default'); }} className={`flex-1 p-2 rounded-2xl ${themeMode==='default'?'bg-indigo-100':'bg-white'}`}>Default</button>
+                  <button onClick={() => { setThemeMode('sunny'); localStorage.setItem('dmm_theme', 'sunny'); }} className={`flex-1 p-2 rounded-2xl ${themeMode==='sunny'?'bg-indigo-100':'bg-white'}`}>Sunny</button>
+                  <button onClick={() => { setThemeMode('rainy'); localStorage.setItem('dmm_theme', 'rainy'); }} className={`flex-1 p-2 rounded-2xl ${themeMode==='rainy'?'bg-indigo-100':'bg-white'}`}>Rainy</button>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button onClick={() => { setThemeMode('sea'); localStorage.setItem('dmm_theme', 'sea'); }} className={`flex-1 p-2 rounded-2xl ${themeMode==='sea'?'bg-indigo-100':'bg-white'}`}>Sea</button>
+                </div>
+              </div>
+
               <div className="text-center text-[10px] text-slate-300 select-none pb-2">
                 Device Hash: {user?.uid ? user.uid.substring(0, 12) + '...' : 'Connecting...'}
               </div>
@@ -686,7 +765,7 @@ const App = () => {
 
       <footer className="max-w-md mx-auto mt-8 px-4 text-center">
         <div className="inline-flex items-center gap-2 bg-indigo-900 text-white px-4 py-2 rounded-full text-[10px] shadow-lg mb-4">
-          <BrainCircuit className="w-3 h-3" /> Jay's Peaceful Space
+          <BrainCircuit className="w-3 h-3" /> {username ? `${username}'s Peaceful Space` : "Peaceful Space"}
         </div>
         <p className="text-[10px] text-slate-400 font-medium leading-relaxed max-w-[250px] mx-auto">
           "Aap ek survivor hain. Apne dimaag ko shant rakhne ke liye sirf aaj par dhyan dein."

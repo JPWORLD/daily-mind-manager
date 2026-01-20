@@ -53,6 +53,39 @@ export default function Pomodoro({ onSessionComplete, t: _t }) {
     } catch (e) {}
   }, []);
 
+  // ticking behavior: decrement remaining when running
+  useEffect(() => {
+    if (running) {
+      intervalRef.current = setInterval(() => {
+        setRemaining((r) => {
+          const nr = r - 1;
+          if (nr <= 0) {
+            clearInterval(intervalRef.current);
+            setRunning(false);
+            // ensure next tick handles period end
+            setTimeout(() => handlePeriodEnd(), 50);
+            return 0;
+          }
+          return nr;
+        });
+      }, 1000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+    return () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
+  }, [running]);
+
+  // persist pomo state regularly
+  useEffect(() => {
+    try {
+      const s = { mode, remaining, completedSessions, config, soundEnabled };
+      localStorage.setItem('pomoState', JSON.stringify(s));
+    } catch (e) {}
+  }, [mode, remaining, completedSessions, config, soundEnabled]);
+
   // ambient sound management (prefers /ambient assets, falls back to procedural noise)
   useEffect(() => {
     const ctx = audioCtxRef.current;
@@ -277,7 +310,19 @@ export default function Pomodoro({ onSessionComplete, t: _t }) {
       </div>
 
       <div className="flex flex-col items-center gap-3">
-        <div className="text-3xl font-mono">{formatTime(remaining)}</div>
+        <div className="relative">
+          <svg width="120" height="120" className="block">
+            <circle cx="60" cy="60" r="52" stroke="#e6edf7" strokeWidth="12" fill="none" />
+            <circle cx="60" cy="60" r="52" stroke="#6366f1" strokeWidth="12" strokeLinecap="round" fill="none"
+              strokeDasharray={Math.PI * 2 * 52}
+              strokeDashoffset={Math.PI * 2 * 52 * (1 - (config[mode] ? (remaining / config[mode]) : (remaining / DEFAULT_CONFIG.work)))}
+              transform="rotate(-90 60 60)"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="text-3xl font-mono">{formatTime(remaining)}</div>
+          </div>
+        </div>
         <div className="flex gap-2">
           {!running ? (
             <button onClick={start} className="px-4 py-2 bg-indigo-600 text-white rounded-lg">Start</button>
