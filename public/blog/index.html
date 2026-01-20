@@ -9,10 +9,59 @@
   </head>
   <body>
     <h1>Daily Mind Manager — Blog</h1>
-    <ul>
-      <li><a href="/blog/post-1.html">How to get started with 25-minute Pomodoros</a></li>
-      <li><a href="/blog/post-2.html">Small habits that compound — a 30 day plan</a></li>
-      <li><a href="/blog/post-3.html">Using ambient sounds to improve focus</a></li>
-    </ul>
+
+    <div class="cards">
+      <a class="card" href="/blog/post-1.html">
+        <img class="card-img" src="/pwa-192.png" alt="Pomodoro" />
+        <div class="card-body">
+          <h2 class="card-title">How to get started with 25-minute Pomodoros</h2>
+          <p class="card-excerpt">A simple, focused approach to get into a productive flow — practical tips to start today.</p>
+          <div class="card-meta">Jan 15, 2026 · 4 min read</div>
+        </div>
+      </a>
+
+      <a class="card" href="/blog/post-2.html">
+        <img class="card-img" src="/pwa-192.png" alt="Habits" />
+        <div class="card-body">
+          <h2 class="card-title">Small habits that compound — a 30 day plan</h2>
+          <p class="card-excerpt">A realistic 30-day plan to build micro-habits that stack into meaningful progress.</p>
+          <div class="card-meta">Dec 28, 2025 · 5 min read</div>
+        </div>
+      </a>
+
+      <a class="card" href="/blog/post-3.html">
+        <img class="card-img" src="/pwa-192.png" alt="Ambient" />
+        <div class="card-body">
+          <h2 class="card-title">Using ambient sounds to improve focus</h2>
+          <p class="card-excerpt">How curated background noise and structured breaks improve concentration for short sessions.</p>
+          <div class="card-meta">Nov 04, 2025 · 3 min read</div>
+        </div>
+      </a>
+    </div>
+
+    <style>
+      :root{--card-bg:#fff;--muted:#64748b}
+      body{background:#f8fafc}
+      .cards{max-width:760px;margin:16px auto;padding:0 12px}
+      .card{display:flex;align-items:flex-start;gap:12px;background:var(--card-bg);border-radius:12px;padding:12px;box-shadow:0 6px 18px rgba(2,6,23,0.06);text-decoration:none;color:inherit;margin-bottom:12px}
+      .card-img{width:88px;height:88px;object-fit:cover;border-radius:8px;flex:0 0 88px}
+      .card-body{flex:1;min-width:0}
+      .card-title{font-size:16px;margin:0 0 6px 0;color:#0f172a}
+      .card-excerpt{font-size:13px;margin:0 0 8px 0;color:var(--muted)}
+      .card-meta{font-size:12px;color:var(--muted)}
+
+      /* mobile adjustments similar to jionews: tighter spacing and full-width image on very small screens */
+      @media (max-width:420px){
+        .card{gap:10px;padding:10px}
+        .card-img{width:84px;height:84px;flex:0 0 84px}
+        .card-title{font-size:15px}
+      }
+
+      /* larger screens: constrain content and make image slightly larger */
+      @media (min-width:900px){
+        .cards{max-width:980px}
+        .card-img{width:120px;height:80px;flex:0 0 120px;border-radius:10px}
+      }
+    </style>
   </body>
 </html>
