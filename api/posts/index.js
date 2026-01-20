@@ -56,12 +56,10 @@ module.exports = async (req, res) => {
         res.statusCode = 401; res.end(JSON.stringify({ error: 'Unauthorized' })); return;
       }
     }
-    // Basic create
-    let body = '';
-    req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', async () => {
+    // Basic create - support both raw stream and express.json() parsed body
+    const handleCreate = async (data) => {
       try {
-        const { title, slug, content, published } = JSON.parse(body);
+        const { title, slug, content, published } = data;
         if (prisma) {
           const post = await prisma.post.create({ data: { title, slug, content, published: !!published } });
           res.setHeader('Content-Type', 'application/json');
@@ -74,6 +72,23 @@ module.exports = async (req, res) => {
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(entry));
         }
+      } catch (e) {
+        res.statusCode = 500;
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    };
+
+    if (req.body && Object.keys(req.body).length) {
+      await handleCreate(req.body);
+      return;
+    }
+
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const parsed = body ? JSON.parse(body) : {};
+        await handleCreate(parsed);
       } catch (e) {
         res.statusCode = 500;
         res.end(JSON.stringify({ error: e.message }));

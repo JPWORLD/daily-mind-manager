@@ -54,11 +54,8 @@ module.exports = async (req, res) => {
         res.statusCode = 401; res.end(JSON.stringify({ error: 'Unauthorized' })); return;
       }
     }
-    let body = '';
-    req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', async () => {
+    const handleUpdate = async (data) => {
       try {
-        const data = JSON.parse(body);
         if (prisma) {
           const post = await prisma.post.update({ where: { id }, data });
           res.setHeader('Content-Type', 'application/json');
@@ -72,6 +69,20 @@ module.exports = async (req, res) => {
           res.setHeader('Content-Type','application/json');
           res.end(JSON.stringify(posts[idx]));
         }
+      } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: e.message })); }
+    };
+
+    if (req.body && Object.keys(req.body).length) {
+      await handleUpdate(req.body);
+      return;
+    }
+
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const parsed = body ? JSON.parse(body) : {};
+        await handleUpdate(parsed);
       } catch (e) { res.statusCode = 500; res.end(JSON.stringify({ error: e.message })); }
     });
     return;
