@@ -97,18 +97,26 @@ export default function Pomodoro({ onSessionComplete, t: _t, compact=false }) {
     }
     if (ambient === 'none') return;
 
-    const tryUseAsset = async (name) => {
+    const tryUseAsset = async (path) => {
       try {
-        const res = await fetch(`/ambient/${name}`, { method: 'HEAD' });
+        const res = await fetch(path, { method: 'HEAD' });
         return res.ok;
       } catch (e) { return false; }
     };
 
     (async () => {
-      const assetName = ambient === 'rain' ? 'rain.mp3' : ambient === 'sea' ? 'sea.mp3' : null;
-      if (assetName && await tryUseAsset(assetName)) {
+      // try common extensions (prefer mp3, fall back to wav)
+      const base = ambient === 'rain' ? 'rain' : ambient === 'sea' ? 'sea' : null;
+      let assetPath = null;
+      if (base) {
+        const candidates = [`/ambient/${base}.mp3`, `/ambient/${base}.wav`];
+        for (const p of candidates) {
+          if (await tryUseAsset(p)) { assetPath = p; break; }
+        }
+      }
+      if (assetPath) {
         try {
-          const audio = new Audio(`/ambient/${assetName}`);
+          const audio = new Audio(assetPath);
           audio.loop = true;
           audio.volume = ambientVolume;
           await audio.play().catch(()=>{});
