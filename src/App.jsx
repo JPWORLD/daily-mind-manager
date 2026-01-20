@@ -47,6 +47,8 @@ const App = () => {
   const [themeMode, setThemeMode] = useState('default'); // e.g., sunny, rainy, sea, default
   const [greeting, setGreeting] = useState('');
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showMoodLog, setShowMoodLog] = useState(false);
+  const [moodLog, setMoodLog] = useState(() => { try { return JSON.parse(localStorage.getItem('mood_log') || '[]'); } catch { return []; } });
 
   // derived accent classes so theme changes apply across components
   const accentBg = themeMode==='sunny' ? 'bg-yellow-500' : themeMode==='rainy' ? 'bg-blue-600' : themeMode==='sea' ? 'bg-teal-600' : 'bg-indigo-600';
@@ -166,6 +168,45 @@ const App = () => {
       setGreeting(pickFrom(fallback));
     })();
   }, []);
+
+  // Inject AdSense script if client id present in env
+  useEffect(() => {
+    try {
+      const client = import.meta.env.VITE_ADSENSE_CLIENT || '';
+      if (!client) return;
+      if (document.querySelector(`script[data-adsbygoogle-client="${client}"]`)) return;
+      const s = document.createElement('script');
+      s.async = true;
+      s.crossOrigin = 'anonymous';
+      s.setAttribute('data-adsbygoogle-client', client);
+      s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${client}`;
+      document.head.appendChild(s);
+    } catch (e) { console.error('adsense inject failed', e); }
+  }, []);
+
+  // Mood logging: record mood + timestamp
+  const logMood = (moodEmoji, label) => {
+    try {
+      const entry = { ts: new Date().toISOString(), mood: moodEmoji, label: label || '' };
+      const next = [entry].concat(moodLog).slice(0, 200); // keep most recent 200
+      setMoodLog(next);
+      localStorage.setItem('mood_log', JSON.stringify(next));
+    } catch (e) { console.error('mood log failed', e); }
+  };
+
+  const handleMoodChange = (key) => {
+    const mapping = {
+      very_happy: ['🤩','very_happy'],
+      happy: ['😄','happy'],
+      neutral: ['😐','neutral'],
+      sad: ['😔','sad'],
+      angry: ['😡','angry'],
+      anxious: ['😰','anxious'],
+      tired: ['😴','tired']
+    };
+    const m = mapping[key] || ['😐', 'neutral'];
+    try { setMood(key); logMood(m[0], m[1]); } catch (e) { console.error(e); }
+  };
 
   // Persist local app state as a fallback
   useEffect(() => {
@@ -509,30 +550,36 @@ const App = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               {syncStatus === 'syncing' && <RefreshCw className={`w-3 h-3 ${accentText} animate-spin`} />}
               {syncStatus === 'synced' && <div className="w-2 h-2 bg-green-500 rounded-full"></div>}
               {syncStatus === 'error' && <AlertCircle className="w-3 h-3 text-red-500" />}
             </div>
+
             <div className="flex items-center gap-3">
               {temperature !== null && <div className="text-sm text-slate-600">{temperature}°C</div>}
               <button onClick={() => setShowScorecard(true)} className="p-2 hover:bg-slate-100 rounded-full" title={t('Scorecard','स्कोरकार्ड')}>
-                    <CheckCircle2 className="w-5 h-5 text-slate-500" />
-                  </button>
-                  <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-slate-100 rounded-full">
-                    <Settings className="w-5 h-5 text-slate-500" />
-                  </button>
-              <button onClick={() => {
-                  const modes = ['default','sunny','rainy','sea'];
-                  const idx = modes.indexOf(themeMode);
-                  const next = modes[(idx + 1) % modes.length];
-                  setThemeMode(next);
-                  localStorage.setItem('dmm_theme', next);
-                }} title={t('Toggle theme','थीम बदलें')} className="p-2 hover:bg-slate-100 rounded-full">
+                <CheckCircle2 className="w-5 h-5 text-slate-500" />
+              </button>
+              <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-slate-100 rounded-full">
+                <Settings className="w-5 h-5 text-slate-500" />
+              </button>
+              <button onClick={() => { const modes = ['default','sunny','rainy','sea']; const idx = modes.indexOf(themeMode); const next = modes[(idx + 1) % modes.length]; setThemeMode(next); localStorage.setItem('dmm_theme', next); }} title={t('Toggle theme','थीम बदलें')} className="p-2 hover:bg-slate-100 rounded-full">
                 <div className="w-5 h-5 flex items-center justify-center text-slate-500">🌓</div>
               </button>
-              <div onClick={() => setShowOnboarding(true)} className="text-xs text-slate-500 flex items-center gap-2 cursor-pointer">
-                {username ? username : ''} {greeting ? <span className="text-[10px] text-slate-400 italic">{greeting}</span> : null}
+
+              <div className="flex items-center gap-2">
+                <div onClick={() => setShowOnboarding(true)} className="text-xs text-slate-500 flex items-center gap-2 cursor-pointer">
+                  {username ? username : ''} {greeting ? <span className="text-[10px] text-slate-400 italic">{greeting}</span> : null}
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button title="Log Very Happy" onClick={() => handleMoodChange('very_happy')} className="p-2">🤩</button>
+                  <button title="Log Happy" onClick={() => handleMoodChange('happy')} className="p-2">😄</button>
+                  <button title="Log Neutral" onClick={() => handleMoodChange('neutral')} className="p-2">😐</button>
+                  <button title="Log Sad" onClick={() => handleMoodChange('sad')} className="p-2">😔</button>
+                  <button title="Mood Log" onClick={() => setShowMoodLog(true)} className="p-2 hover:bg-slate-100 rounded-full">📈</button>
+                </div>
               </div>
             </div>
           </div>
@@ -832,6 +879,32 @@ const App = () => {
                   );
                 } catch (e) { return <div className="text-xs text-slate-500">No analytics available</div>; }
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMoodLog && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/40">
+          <div className="bg-white w-full max-w-md rounded-2xl p-0 max-h-[80vh] overflow-y-auto">
+            <div className="p-4 sticky top-0 bg-white border-b flex items-center justify-between">
+              <h3 className="text-lg font-bold">Mood Log</h3>
+              <button onClick={() => setShowMoodLog(false)} className="p-2 bg-slate-100 rounded-full">Close</button>
+            </div>
+            <div className="p-4 space-y-3 text-sm">
+              {moodLog.length === 0 ? (
+                <div className="text-slate-400">No mood entries yet</div>
+              ) : (
+                moodLog.map((e) => (
+                  <div key={e.ts} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="text-2xl">{e.mood}</div>
+                      <div className="text-xs text-slate-600">{e.label}</div>
+                    </div>
+                    <div className="text-xs text-slate-400">{new Date(e.ts).toLocaleString()}</div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
