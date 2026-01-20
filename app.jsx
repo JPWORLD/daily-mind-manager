@@ -420,7 +420,7 @@ const App = () => {
             {blogPosts.length > 0 ? (
               <div className="space-y-4">
                 {blogPosts.map(post => (
-                  <a key={post.id} href={`/blog/${post.slug}.html`} className="block bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 no-underline text-inherit flex items-start gap-4">
+                  <a key={post.id} href={`/blog/post.html?slug=${post.slug}`} className="block bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 no-underline text-inherit flex items-start gap-4">
                     <img src={post.image || '/pwa-192.png'} alt={post.title} className="w-20 h-20 object-cover rounded flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <h3 className="text-md font-bold text-slate-800 mb-1">{post.title}</h3>

@@ -21,7 +21,7 @@
           const posts = await res.json();
           const cardsEl = document.getElementById('cards');
           cardsEl.innerHTML = posts.map(post => `
-            <a class="card" href="/blog/${post.slug}.html">
+            <a class="card" href="/blog/post.html?slug=${post.slug}">
               <img class="card-img" src="${post.image || '/pwa-192.png'}" alt="${post.title}" />
               <div class="card-body">
                 <h2 class="card-title">${post.title}</h2>
