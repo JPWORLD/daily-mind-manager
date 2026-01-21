@@ -38,5 +38,14 @@
     "image": "/pwa-192.png",
     "createdAt": "2025-10-15T00:00:00.000Z",
     "updatedAt": "2025-10-15T00:00:00.000Z"
+  },
+  {
+    "id": 5,
+    "title": "E2E Test Post",
+    "slug": "e2e-1768924542706",
+    "content": "This is a test post created during E2E.",
+    "published": true,
+    "createdAt": "2026-01-20T15:55:42.726Z",
+    "updatedAt": "2026-01-20T15:55:42.727Z"
   }
 ]
