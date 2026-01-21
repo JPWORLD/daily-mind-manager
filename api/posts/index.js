@@ -52,7 +52,8 @@ module.exports = async (req, res) => {
       }
     }
     if (!authorized) {
-      if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
+      const adminToken = process.env.ADMIN_TOKEN || process.env.DMM_ADMIN_TOKEN;
+      if (!adminToken || token !== adminToken) {
         res.statusCode = 401; res.end(JSON.stringify({ error: 'Unauthorized' })); return;
       }
     }
