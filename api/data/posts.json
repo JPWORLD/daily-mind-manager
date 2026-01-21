@@ -47,5 +47,14 @@
     "published": true,
     "createdAt": "2026-01-20T15:55:42.726Z",
     "updatedAt": "2026-01-20T15:55:42.727Z"
+  },
+  {
+    "id": 6,
+    "title": "E2E Test Post",
+    "slug": "e2e-1768925923075",
+    "content": "This is a test post created during E2E.",
+    "published": true,
+    "createdAt": "2026-01-20T16:18:43.085Z",
+    "updatedAt": "2026-01-20T16:18:43.085Z"
   }
 ]
