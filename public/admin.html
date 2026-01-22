@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Admin — Daily Mind Manager</title>
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
     <style>
       body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:24px;max-width:800px;margin:0 auto;background:#f8fafc}
       .login{display:block}
@@ -36,7 +37,9 @@
       <label>Title<input id="title"/></label>
       <label>Slug<input id="slug"/></label>
       <label>Image URL<input id="image"/></label>
-      <label>Content<textarea id="content" rows="8"></textarea></label>
+      <label>Upload Image<input id="imageFile" type="file" accept="image/*"/></label>
+      <button id="uploadImage">Upload Image</button>
+      <label>Content (Markdown)<textarea id="content" rows="8" placeholder="Write Markdown here..."></textarea></label>
       <label><input type="checkbox" id="published"/> Published</label>
       <button id="save" class="save">Save Post</button>
       <div id="out"></div>
@@ -45,6 +48,7 @@
       <div id="posts"></div>
     </div>
     <script>
+      // load EasyMDE and dependencies dynamically if needed
       const loginDiv = document.getElementById('login');
       const panelDiv = document.getElementById('panel');
       const loginOut = document.getElementById('loginOut');
@@ -68,7 +72,8 @@
 
       async function loadPosts() {
         const res = await fetch('/api/posts');
-        const posts = await res.json();
+        const data = await res.json();
+        const posts = Array.isArray(data) ? data : (data && data.posts ? data.posts : []);
         const postsDiv = document.getElementById('posts');
         postsDiv.innerHTML = posts.map(p => `
           <div class="post">
@@ -86,7 +91,7 @@
           title: document.getElementById('title').value,
           slug: document.getElementById('slug').value,
           image: document.getElementById('image').value,
-          content: document.getElementById('content').value,
+          content: document.getElementById('content').value, // markdown stored here
           published: document.getElementById('published').checked
         };
         const token = await getToken();
@@ -100,6 +105,55 @@
         } else {
           document.getElementById('out').innerHTML = '<div class="error">Error: ' + (json.error || res.statusText) + '</div>';
         }
+      });
+
+      // initialize EasyMDE editor after DOM loads
+      let editor = null;
+      (function initEditor(){
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/easymde/dist/easymde.min.js';
+        s.onload = () => { try { editor = new EasyMDE({ element: document.getElementById('content') }); } catch(e){} };
+        document.head.appendChild(s);
+        // client-side markdown preview lib
+        const m = document.createElement('script');
+        m.src = 'https://unpkg.com/marked/marked.min.js';
+        document.head.appendChild(m);
+        const d = document.createElement('script');
+        d.src = 'https://unpkg.com/dompurify@2.3.10/dist/purify.min.js';
+        document.head.appendChild(d);
+      })();
+
+      // Preview markdown in output area
+      document.getElementById('content').addEventListener('input', () => {
+        const md = editor ? editor.value() : document.getElementById('content').value;
+        if (window.marked && window.DOMPurify) {
+          const out = DOMPurify.sanitize(marked.parse(md || ''));
+          document.getElementById('out').innerHTML = out;
+        }
+      });
+
+      // Image upload handler: read file as dataURL and POST to /api/uploads
+      document.getElementById('uploadImage').addEventListener('click', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('imageFile');
+        if (!input.files || !input.files[0]) { alert('Choose a file first'); return; }
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const dataUrl = reader.result;
+          const token = await getToken();
+          const headers = { 'Content-Type': 'application/json' };
+          if (token) headers['Authorization'] = 'Bearer ' + token;
+          const res = await fetch('/api/uploads', { method: 'POST', headers, body: JSON.stringify({ filename: file.name, data: dataUrl }) });
+          const json = await res.json();
+          if (res.ok) {
+            document.getElementById('image').value = json.url;
+            document.getElementById('out').innerHTML = '<div class="success">Uploaded: ' + json.url + '</div>';
+          } else {
+            document.getElementById('out').innerHTML = '<div class="error">Upload failed: ' + (json.error || res.statusText) + '</div>';
+          }
+        };
+        reader.readAsDataURL(file);
       });
 
       async function editPost(id) {

@@ -18,7 +18,8 @@
       async function loadPosts() {
         try {
           const res = await fetch('/api/posts');
-          const posts = await res.json();
+          const data = await res.json();
+          const posts = Array.isArray(data) ? data : (data && data.posts ? data.posts : []);
           const cardsEl = document.getElementById('cards');
           cardsEl.innerHTML = posts.map(post => `
             <a class="card" href="/blog/post.html?slug=${post.slug}">

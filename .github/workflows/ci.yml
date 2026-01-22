@@ -22,7 +22,14 @@ jobs:
         run: npm run build
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
-      - name: Run E2E tests
+      - name: Start frontend and API servers
+        run: |
+          npx http-server ./dist -p 8080 &
+          npm run dev:server &
+          npx wait-on http://localhost:8080 http://localhost:8081/api/posts
+        shell: bash
+      - name: Run Playwright tests
         run: npm run test:e2e -- --reporter=list
         env:
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          DMM_ADMIN_TOKEN: ${{ secrets.DMM_ADMIN_TOKEN }}

@@ -138,7 +138,9 @@ const App = () => {
   const fetchBlogPosts = async () => {
     try {
       const res = await fetch('/api/posts');
-      const posts = await res.json();
+      const data = await res.json();
+      // Support both paginated { posts, total, page, perPage } and legacy array
+      const posts = Array.isArray(data) ? data : (data && data.posts ? data.posts : []);
       setBlogPosts(posts);
     } catch (err) {
       console.error('Blog fetch error', err);

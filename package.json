@@ -15,11 +15,15 @@
     "prisma:migrate:prod": "prisma migrate deploy",
     "dev:server": "node scripts/dev-server.js"
   },
+  "postbuild": "node scripts/generate-rss.js && node scripts/generate-sitemap.js",
   "prisma": {
     "schema": "prisma/schema.prisma"
   },
   "dependencies": {
     "@prisma/client": "^7.2.0",
+    "marked": "^5.1.1",
+    "sanitize-html": "^2.11.0",
+    "aws-sdk": "^2.1360.0",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "firebase": "^9.22.0",

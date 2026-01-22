@@ -17,7 +17,8 @@ test.describe('Admin flow', () => {
     // verify public posts endpoint
     const postsRes = await request.get(baseURL + '/api/posts');
     expect(postsRes.ok()).toBeTruthy();
-    const posts = await postsRes.json();
+    const postsData = await postsRes.json();
+    const posts = Array.isArray(postsData) ? postsData : (postsData && postsData.posts ? postsData.posts : []);
     const found = posts.find(p => p.slug === slug);
     expect(found).toBeTruthy();
   });
