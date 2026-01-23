@@ -31,6 +31,10 @@ module.exports = async (req, res) => {
         if (!post) { res.statusCode = 404; res.end('Not found'); return; }
         const { marked } = require('marked');
         const sanitize = require('sanitize-html');
+        // increment view count for JSON fallback
+        post.views = (post.views || 0) + 1;
+        const idx = posts.findIndex(p => p.id === id);
+        if (idx !== -1) { posts[idx] = post; writePosts(posts); }
         const postWithHtml = { ...post, html: sanitize(marked.parse(post.content || '')) };
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(postWithHtml));
@@ -40,13 +44,19 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'PUT') {
-    // Protect update: centralized admin check
-    const { checkAdmin } = require('../api/_auth');
-    const ok = await checkAdmin(req);
-    if (!ok) { res.statusCode = 401; res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    // Protect update: require admin/editor. Support JWT roles or static/Firebase fallback.
+    const { checkAdmin, getAdminFromReq } = require('../_auth');
+    const adminInfo = getAdminFromReq(req);
+    let allowed = false;
+    if (adminInfo && (adminInfo.role === 'admin' || adminInfo.role === 'editor')) allowed = true;
+    else {
+      const ok = await checkAdmin(req);
+      if (ok) allowed = true;
+    }
+    if (!allowed) { res.statusCode = 403; res.end(JSON.stringify({ error: 'Forbidden' })); return; }
     const handleUpdate = async (data) => {
       try {
-        const { title, slug, content } = data;
+        const { title, slug, content, categories, subcategories, published, image } = data;
         if (slug && !/^[a-z0-9\-]+$/.test(slug)) { res.statusCode = 400; res.end(JSON.stringify({ error: 'invalid slug' })); return; }
         if (prisma) {
           // if slug being changed, ensure uniqueness
@@ -54,15 +64,58 @@ module.exports = async (req, res) => {
             const existing = await prisma.post.findUnique({ where: { slug } });
             if (existing && existing.id !== id) { res.statusCode = 409; res.end(JSON.stringify({ error: 'slug already exists' })); return; }
           }
-          const post = await prisma.post.update({ where: { id }, data });
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify(post));
+          // load current post to create a version
+          const current = await prisma.post.findUnique({ where: { id }, include: { categories: true, tags: true } });
+          if (!current) { res.statusCode = 404; res.end(JSON.stringify({ error: 'Not found' })); return; }
+          // create version record
+          try {
+            await prisma.postVersion.create({ data: { postId: id, content: current.content, title: current.title } });
+          } catch (e) { /* ignore version errors */ }
+
+          const updateData = { title, slug, content, image, scheduledFor: data.scheduledFor || null };
+          updateData.status = published ? 'PUBLISHED' : (data.status || 'DRAFT');
+
+          // sync categories (set to provided names)
+          if (Array.isArray(categories)) {
+            const catConnect = [];
+            for (const name of categories) {
+              const trimmed = String(name || '').trim();
+              if (!trimmed) continue;
+              let cat = await prisma.category.findUnique({ where: { name: trimmed } });
+              if (!cat) cat = await prisma.category.create({ data: { name: trimmed } });
+              catConnect.push({ id: cat.id });
+            }
+            updateData.categories = { set: catConnect };
+          }
+
+          // sync subcategories -> tags
+          if (Array.isArray(subcategories)) {
+            const tagConnect = [];
+            for (const name of subcategories) {
+              const trimmed = String(name || '').trim();
+              if (!trimmed) continue;
+              let tag = await prisma.tag.findUnique({ where: { name: trimmed } });
+              if (!tag) tag = await prisma.tag.create({ data: { name: trimmed } });
+              tagConnect.push({ id: tag.id });
+            }
+            updateData.tags = { set: tagConnect };
+          }
+
+          try {
+            const post = await prisma.post.update({ where: { id }, data: updateData, include: { categories: true, tags: true } });
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(post));
+          } catch (e) {
+            const post = await prisma.post.update({ where: { id }, data: { title, slug, content, published, image } });
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(post));
+          }
         } else {
           const posts = readPosts();
           const idx = posts.findIndex(p=>p.id===id);
           if (idx===-1) { res.statusCode=404; res.end('Not found'); return; }
           if (slug && posts.find(p => p.slug === slug && p.id !== id)) { res.statusCode = 409; res.end(JSON.stringify({ error: 'slug already exists' })); return; }
-          posts[idx] = { ...posts[idx], ...data, updatedAt: new Date().toISOString() };
+          posts[idx] = { ...posts[idx], ...data, categories: categories || posts[idx].categories || [], subcategories: subcategories || posts[idx].subcategories || [], updatedAt: new Date().toISOString() };
           writePosts(posts);
           res.setHeader('Content-Type','application/json');
           res.end(JSON.stringify(posts[idx]));
@@ -87,27 +140,16 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'DELETE') {
-    // Protect delete: verify Firebase ID token if service account set, else ADMIN_TOKEN
-    const authHeader = req.headers['authorization'] || req.headers['x-admin-token'];
-    const token = (authHeader || '').replace(/^Bearer\s+/i, '');
-    let authorizedDel = false;
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      try {
-        const admin = require('firebase-admin');
-        if (!admin.apps.length) {
-          const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-          admin.initializeApp({ credential: admin.credential.cert(sa) });
-        }
-        const decoded = await admin.auth().verifyIdToken(token);
-        if (decoded && decoded.uid) authorizedDel = true;
-      } catch (e) { authorizedDel = false; }
+    // Protect delete: require admin role via JWT or accept static/Firebase fallback
+    const { checkAdmin, getAdminFromReq: getReqAdmin } = require('../_auth');
+    const info = getReqAdmin(req);
+    let canDelete = false;
+    if (info && info.role === 'admin') canDelete = true;
+    else {
+      const ok = await checkAdmin(req);
+      if (ok) canDelete = true;
     }
-    if (!authorizedDel) {
-      const adminToken = process.env.ADMIN_TOKEN || process.env.DMM_ADMIN_TOKEN;
-      if (!adminToken || token !== adminToken) {
-        res.statusCode = 401; res.end(JSON.stringify({ error: 'Unauthorized' })); return;
-      }
-    }
+    if (!canDelete) { res.statusCode = 401; res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     try {
       if (prisma) {
         await prisma.post.delete({ where: { id } });

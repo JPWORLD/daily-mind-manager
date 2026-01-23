@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Admin — Daily Mind Manager</title>
     <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+    <link rel="stylesheet" href="https://uicdn.toast.com/tui.editor/latest/tui-editor.min.css">
+    <link rel="stylesheet" href="https://uicdn.toast.com/tui.editor/latest/tui-editor-contents.min.css">
     <style>
       body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:24px;max-width:800px;margin:0 auto;background:#f8fafc}
       .login{display:block}
@@ -26,7 +28,7 @@
   <body>
     <div id="login" class="login">
       <h1>Admin Login</h1>
-      <label>Username<input id="username"/></label>
+      <label>Email<input id="username" placeholder="admin@example.com"/></label>
       <label>Password<input id="password" type="password"/></label>
       <button id="loginBtn">Login</button>
       <div id="loginOut"></div>
@@ -37,14 +39,37 @@
       <label>Title<input id="title"/></label>
       <label>Slug<input id="slug"/></label>
       <label>Image URL<input id="image"/></label>
+      <label>Search Posts<input id="searchBox" placeholder="Search posts..."/></label>
+      <label>Schedule publish (ISO datetime, optional)<input id="scheduledFor" placeholder="2026-01-30T09:00:00Z"/></label>
+      <label>Categories (comma separated)<input id="categories" placeholder="productivity,habits"/></label>
+      <label>Subcategories / Tags (comma separated)<input id="subcategories" placeholder="morning,routine"/></label>
+      <label>Author<select id="authorSelect"><option value="">(none)</option></select></label>
+      <div style="margin-top:8px;padding:8px;background:#fff;border:1px solid #eee;border-radius:8px">
+        <strong style="font-size:13px">Manage Tags & Categories</strong>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="newTag" placeholder="new tag" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:6px" />
+          <button id="addTag">Add Tag</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="newCat" placeholder="new category" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:6px" />
+          <button id="addCat">Add Category</button>
+        </div>
+        <div id="tagList" style="margin-top:8px;font-size:13px;color:#334155"></div>
+        <div id="catList" style="margin-top:6px;font-size:13px;color:#334155"></div>
+      </div>
       <label>Upload Image<input id="imageFile" type="file" accept="image/*"/></label>
       <button id="uploadImage">Upload Image</button>
-      <label>Content (Markdown)<textarea id="content" rows="8" placeholder="Write Markdown here..."></textarea></label>
+      <label>Content (WYSIWYG)</label>
+      <div id="editor" style="height:300px;border:1px solid #ddd;background:#fff"></div>
+      <textarea id="content" rows="8" placeholder="Write Markdown here..." style="display:none"></textarea>
       <label><input type="checkbox" id="published"/> Published</label>
       <button id="save" class="save">Save Post</button>
       <div id="out"></div>
       <hr />
-      <h2>Existing Posts</h2>
+      <h2>Existing Posts & Stats</h2>
+      <div id="stats" style="margin-bottom:12px;padding:12px;background:#fff;border-radius:8px;border:1px solid #eee">
+        <canvas id="viewsChart" width="600" height="200"></canvas>
+      </div>
       <div id="posts"></div>
     </div>
     <script>
@@ -53,47 +78,79 @@
       const panelDiv = document.getElementById('panel');
       const loginOut = document.getElementById('loginOut');
 
-      document.getElementById('loginBtn').addEventListener('click', ()=>{
-        const user = document.getElementById('username').value;
+      document.getElementById('loginBtn').addEventListener('click', async ()=>{
+        const email = document.getElementById('username').value;
         const pass = document.getElementById('password').value;
-        if (user === 'admin' && pass === 'admin123') {
-          localStorage.setItem('dmm_admin_token', 'dev-admin-token');
+        try {
+          const res = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ email, password: pass }) });
+          if (!res.ok) { loginOut.innerHTML = '<div class="error">Invalid credentials</div>'; return; }
+          const json = await res.json();
+          localStorage.setItem('dmm_admin_token', json.token);
           loginDiv.style.display = 'none';
           panelDiv.style.display = 'block';
+          await reloadTagsAndCats();
           loadPosts();
-        } else {
-          loginOut.innerHTML = '<div class="error">Invalid credentials</div>';
-        }
+        } catch (e) { loginOut.innerHTML = '<div class="error">Login failed</div>'; }
       });
 
       async function getToken() {
         return localStorage.getItem('dmm_admin_token') || '';
       }
 
-      async function loadPosts() {
+      function renderPosts(posts){
+        const postsDiv = document.getElementById('posts');
+        postsDiv.innerHTML = (posts||[]).map(p => `
+          <div class="post">
+            <h3>${p.title} <small style="font-size:12px;color:#666">${p.views ? p.views + ' views' : ''}</small></h3>
+              <p>Slug: ${p.slug} | Categories: ${(p.categories && p.categories.length) ? (Array.isArray(p.categories) ? p.categories.join(', ') : p.categories) : '—'}</p>
+              <p>Published: ${p.published ? 'Yes' : 'No'}</p>
+              <button class="edit" onclick="editPost(${p.id})">Edit</button>
+              <button class="edit" onclick="showHistory(${p.id})">History</button>
+              <button class="delete" onclick="deletePost(${p.id})">Delete</button>
+          </div>
+        `).join('');
+        renderStatsChart(posts);
+      }
+
+      async function loadPosts(){
         const res = await fetch('/api/posts');
         const data = await res.json();
         const posts = Array.isArray(data) ? data : (data && data.posts ? data.posts : []);
-        const postsDiv = document.getElementById('posts');
-        postsDiv.innerHTML = posts.map(p => `
-          <div class="post">
-            <h3>${p.title}</h3>
-            <p>Slug: ${p.slug}</p>
-            <p>Published: ${p.published ? 'Yes' : 'No'}</p>
-            <button class="edit" onclick="editPost(${p.id})">Edit</button>
-            <button class="delete" onclick="deletePost(${p.id})">Delete</button>
-          </div>
-        `).join('');
+        renderPosts(posts);
       }
+
+      // search box: debounce and call /api/search
+      let _searchTimer = null;
+      document.getElementById('searchBox').addEventListener('input', (e)=>{
+        clearTimeout(_searchTimer);
+        const v = (e.target.value||'').trim();
+        _searchTimer = setTimeout(async ()=>{
+          if (!v) { loadPosts(); return; }
+          try {
+            const res = await fetch('/api/search?q='+encodeURIComponent(v));
+            if (!res.ok) { loadPosts(); return; }
+            const json = await res.json();
+            const results = json.results || [];
+            renderPosts(results);
+          } catch (e) { loadPosts(); }
+        }, 300);
+      });
 
       document.getElementById('save').addEventListener('click', async ()=>{
         const data = {
-          title: document.getElementById('title').value,
-          slug: document.getElementById('slug').value,
-          image: document.getElementById('image').value,
-          content: document.getElementById('content').value, // markdown stored here
-          published: document.getElementById('published').checked
-        };
+            title: document.getElementById('title').value,
+            slug: document.getElementById('slug').value,
+            image: document.getElementById('image').value,
+            content: editor ? (editor.getMarkdown ? editor.getMarkdown() : (editor.getHtml ? editor.getHtml() : document.getElementById('content').value)) : document.getElementById('content').value, // markdown or HTML from editor
+            published: document.getElementById('published').checked,
+            scheduledFor: (document.getElementById('scheduledFor')||{}).value || null
+          };
+        const catInput = document.getElementById('categories') ? document.getElementById('categories').value.trim() : '';
+        const subcatInput = document.getElementById('subcategories') ? document.getElementById('subcategories').value.trim() : '';
+        if (catInput) data.categories = catInput.split(',').map(s => s.trim()).filter(Boolean);
+        if (subcatInput) data.subcategories = subcatInput.split(',').map(s => s.trim()).filter(Boolean);
+        const authorVal = document.getElementById('authorSelect') ? document.getElementById('authorSelect').value : '';
+        if (authorVal) data.authorId = parseInt(authorVal, 10);
         const token = await getToken();
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = 'Bearer ' + token;
@@ -107,30 +164,38 @@
         }
       });
 
-      // initialize EasyMDE editor after DOM loads
+
+      // initialize Toast UI Editor (WYSIWYG) after DOM loads
       let editor = null;
       (function initEditor(){
         const s = document.createElement('script');
-        s.src = 'https://unpkg.com/easymde/dist/easymde.min.js';
-        s.onload = () => { try { editor = new EasyMDE({ element: document.getElementById('content') }); } catch(e){} };
+        s.src = 'https://uicdn.toast.com/tui.editor/latest/tui-editor-Editor-full.js';
+        s.onload = () => {
+          try {
+            editor = new tui.Editor({ el: document.querySelector('#editor'), previewStyle: 'vertical', height: '300px', initialEditType: 'wysiwyg', useCommandShortcut: true, initialValue: document.getElementById('content').value || '' });
+          } catch (e) { console.error('editor init', e); }
+        };
         document.head.appendChild(s);
-        // client-side markdown preview lib
-        const m = document.createElement('script');
-        m.src = 'https://unpkg.com/marked/marked.min.js';
-        document.head.appendChild(m);
         const d = document.createElement('script');
         d.src = 'https://unpkg.com/dompurify@2.3.10/dist/purify.min.js';
         document.head.appendChild(d);
+        const c = document.createElement('script');
+        c.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        document.head.appendChild(c);
       })();
 
-      // Preview markdown in output area
-      document.getElementById('content').addEventListener('input', () => {
-        const md = editor ? editor.value() : document.getElementById('content').value;
-        if (window.marked && window.DOMPurify) {
-          const out = DOMPurify.sanitize(marked.parse(md || ''));
-          document.getElementById('out').innerHTML = out;
-        }
-      });
+      // Preview WYSIWYG content (sanitized)
+      function refreshPreview(){
+        try {
+          const html = editor ? (editor.getHtml && editor.getHtml()) || editor.getMarkdown() : document.getElementById('content').value;
+          if (window.DOMPurify) {
+            document.getElementById('out').innerHTML = DOMPurify.sanitize(html || '');
+          } else {
+            document.getElementById('out').innerHTML = html || '';
+          }
+        } catch(e){}
+      }
+      setInterval(refreshPreview, 1000);
 
       // Image upload handler: read file as dataURL and POST to /api/uploads
       document.getElementById('uploadImage').addEventListener('click', async (e) => {
@@ -156,6 +221,38 @@
         reader.readAsDataURL(file);
       });
 
+      // tag/category management handlers
+      async function reloadTagsAndCats() {
+        try {
+          const [tagsRes, catsRes, authorsRes] = await Promise.all([fetch('/api/tags'), fetch('/api/categories'), fetch('/api/authors')]);
+          const tags = tagsRes.ok ? await tagsRes.json() : [];
+          const cats = catsRes.ok ? await catsRes.json() : [];
+          const authors = authorsRes.ok ? await authorsRes.json() : [];
+          document.getElementById('tagList').textContent = 'Tags: ' + (tags.map(t=>t.name||t).join(', ') || '—');
+          document.getElementById('catList').textContent = 'Categories: ' + (cats.map(c=>c.name||c).join(', ') || '—');
+          const sel = document.getElementById('authorSelect');
+          sel.innerHTML = '<option value="">(none)</option>' + authors.map(a=>`<option value="${a.id}">${a.name} (${a.email || ''})</option>`).join('');
+        } catch (e) { /* ignore */ }
+      }
+      document.getElementById('addTag').addEventListener('click', async ()=>{
+        const name = (document.getElementById('newTag').value||'').trim();
+        if (!name) return alert('Enter tag');
+        const token = await getToken();
+        const headers = { 'Content-Type':'application/json' }; if (token) headers['Authorization']='Bearer '+token;
+        const res = await fetch('/api/tags', { method: 'POST', headers, body: JSON.stringify({ name }) });
+        if (res.ok) { document.getElementById('newTag').value=''; reloadTagsAndCats(); } else { alert('Add tag failed'); }
+      });
+      document.getElementById('addCat').addEventListener('click', async ()=>{
+        const name = (document.getElementById('newCat').value||'').trim();
+        if (!name) return alert('Enter category');
+        const token = await getToken();
+        const headers = { 'Content-Type':'application/json' }; if (token) headers['Authorization']='Bearer '+token;
+        const res = await fetch('/api/categories', { method: 'POST', headers, body: JSON.stringify({ name }) });
+        if (res.ok) { document.getElementById('newCat').value=''; reloadTagsAndCats(); } else { alert('Add category failed'); }
+      });
+      // load initial lists
+      reloadTagsAndCats();
+
       async function editPost(id) {
         // For simplicity, fetch and populate form
         const res = await fetch(`/api/posts/${id}`);
@@ -163,7 +260,10 @@
         document.getElementById('title').value = post.title;
         document.getElementById('slug').value = post.slug;
         document.getElementById('image').value = post.image || '';
+        document.getElementById('categories').value = post.categories ? (Array.isArray(post.categories) ? post.categories.join(',') : post.categories) : '';
+        document.getElementById('subcategories').value = post.subcategories ? (Array.isArray(post.subcategories) ? post.subcategories.join(',') : post.subcategories) : '';
         document.getElementById('content').value = post.content;
+        try { if (editor && editor.setMarkdown) editor.setMarkdown(post.content || ''); } catch(e){}
         document.getElementById('published').checked = post.published;
         // Change save to update
         document.getElementById('save').innerText = 'Update Post';
@@ -175,9 +275,14 @@
           title: document.getElementById('title').value,
           slug: document.getElementById('slug').value,
           image: document.getElementById('image').value,
-          content: document.getElementById('content').value,
-          published: document.getElementById('published').checked
+          content: editor ? (editor.getMarkdown ? editor.getMarkdown() : (editor.getHtml ? editor.getHtml() : document.getElementById('content').value)) : document.getElementById('content').value,
+          published: document.getElementById('published').checked,
+          scheduledFor: (document.getElementById('scheduledFor')||{}).value || null
         };
+          const catVal = document.getElementById('categories') ? document.getElementById('categories').value.trim() : '';
+          const subVal = document.getElementById('subcategories') ? document.getElementById('subcategories').value.trim() : '';
+          if (catVal) data.categories = catVal.split(',').map(s => s.trim()).filter(Boolean);
+          if (subVal) data.subcategories = subVal.split(',').map(s => s.trim()).filter(Boolean);
         const token = await getToken();
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = 'Bearer ' + token;
@@ -191,6 +296,23 @@
         }
       }
 
+      function renderStatsChart(posts) {
+        try {
+          const ctx = document.getElementById('viewsChart');
+          if (!ctx || typeof Chart === 'undefined') return;
+          const sorted = (posts || []).slice().sort((a,b)=> (b.views||0)-(a.views||0)).slice(0,10);
+          const labels = sorted.map(p => p.title.substring(0,30));
+          const data = sorted.map(p => p.views || 0);
+          // clear existing
+          if (ctx._chart) { ctx._chart.destroy(); }
+          ctx._chart = new Chart(ctx.getContext('2d'), {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Views', data, backgroundColor: 'rgba(59,130,246,0.7)' }] },
+            options: { responsive: true, maintainAspectRatio: false }
+          });
+        } catch (e) { /* ignore chart errors */ }
+      }
+
       async function deletePost(id) {
         const token = await getToken();
         const headers = {};
@@ -201,6 +323,54 @@
         } else {
           alert('Delete failed');
         }
+      }
+
+      // Autosave draft to localStorage every 10s
+      setInterval(()=>{
+        try{
+          const draft = {
+            title: document.getElementById('title').value,
+            slug: document.getElementById('slug').value,
+            image: document.getElementById('image').value,
+            categories: document.getElementById('categories').value,
+            subcategories: document.getElementById('subcategories').value,
+            content: (editor && (editor.getMarkdown ? editor.getMarkdown() : editor.getHtml())) || document.getElementById('content').value,
+            scheduledFor: (document.getElementById('scheduledFor')||{}).value || null,
+            updatedAt: new Date().toISOString()
+          };
+          localStorage.setItem('dmm_draft', JSON.stringify(draft));
+        }catch(e){}
+      },10000);
+
+      // Load draft button
+      const loadDraftBtn = document.createElement('button');
+      loadDraftBtn.innerText = 'Load Draft';
+      loadDraftBtn.style.marginLeft = '8px';
+      loadDraftBtn.onclick = ()=>{
+        try{
+          const d = JSON.parse(localStorage.getItem('dmm_draft')||'null');
+          if (!d) return alert('No draft saved');
+          document.getElementById('title').value = d.title || '';
+          document.getElementById('slug').value = d.slug || '';
+          document.getElementById('image').value = d.image || '';
+          document.getElementById('categories').value = d.categories || '';
+          document.getElementById('subcategories').value = d.subcategories || '';
+          document.getElementById('scheduledFor').value = d.scheduledFor || '';
+          try{ if (editor && editor.setMarkdown) editor.setMarkdown(d.content||''); } catch(e){ document.getElementById('content').value = d.content || ''; }
+        }catch(e){ alert('Failed to load draft'); }
+      };
+      document.querySelector('#panel h1').appendChild(loadDraftBtn);
+
+      // Show version history modal
+      async function showHistory(id){
+        try {
+          const res = await fetch(`/api/posts/versions/${id}`);
+          if (!res.ok) return alert('No history');
+          const versions = await res.json();
+          const html = (versions||[]).map(v=>`<div style="padding:8px;border-bottom:1px solid #eee"><strong>${new Date(v.createdAt).toLocaleString()}</strong><div style="margin-top:6px">${(v.title||'').substring(0,200)}</div><pre style="white-space:pre-wrap;margin-top:8px">${(v.content||'').substring(0,500)}</pre></div>`).join('') || '<div style="padding:8px">No versions</div>';
+          const w = window.open('', '_blank', 'width=800,height=600');
+          w.document.write('<html><head><title>History</title></head><body>'+html+'</body></html>');
+        } catch (e) { alert('Error loading history'); }
       }
     </script>
   </body>

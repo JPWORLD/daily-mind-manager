@@ -430,7 +430,11 @@ const App = () => {
                     <img src={post.image || '/pwa-192.png'} alt={post.title} className="w-20 h-20 object-cover rounded flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <h3 className="text-md font-bold text-slate-800 mb-1">{post.title}</h3>
-                      <p className="text-sm text-slate-600 mb-2 line-clamp-2">{post.content.substring(0, 120)}...</p>
+                      <p className="text-sm text-slate-600 mb-2 line-clamp-2">{(function(){
+                        const strip = (s='') => (s || '').replace(/<[^>]+>/g, '');
+                        const src = post.html ? strip(post.html) : (post.content || '');
+                        return src.length > 120 ? src.substring(0,120) + '...' : src;
+                      })()}</p>
                       <div className="text-xs text-slate-400">{new Date(post.createdAt).toLocaleDateString()}</div>
                     </div>
                   </a>

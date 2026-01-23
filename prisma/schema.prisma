@@ -2,18 +2,76 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Datasource: keep using environment DATABASE_URL. For production prefer a Postgres URL.
 datasource db {
-  provider = "sqlite"
+  provider = env("PRISMA_PROVIDER") == "postgres" ? "postgresql" : "sqlite"
   url      = env("DATABASE_URL")
 }
 
-model Post {
+generator typegraphql {
+  provider = "prisma-client-js"
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+  ARCHIVED
+}
+
+model Author {
   id        Int      @id @default(autoincrement())
-  title     String
-  slug      String   @unique
-  content   String
-  published Boolean  @default(false)
-  image     String?
+  name      String
+  email     String   @unique
+  password  String?  // hashed password for admin users (nullable if using external auth)
+  role      String   @default("editor")
+  posts     Post[]   @relation("AuthorPosts")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Tag {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  posts Post[] @relation("PostTags", references: [id])
+}
+
+model Category {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  posts Post[] @relation("PostCategories", references: [id])
+}
+
+model Post {
+  id           Int         @id @default(autoincrement())
+  title        String
+  slug         String      @unique
+  summary      String?     // short excerpt
+  content      String
+  status       PostStatus  @default(DRAFT)
+  image        String?
+  views        Int         @default(0)
+  authorId     Int?
+  author       Author?     @relation("AuthorPosts", fields: [authorId], references: [id])
+  tags         Tag[]       @relation("PostTags", references: [id])
+  categories   Category[]  @relation("PostCategories", references: [id])
+  versions     PostVersion[]
+  scheduledFor DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([createdAt])
+  @@index([status])
+}
+
+model PostVersion {
+  id        Int      @id @default(autoincrement())
+  post      Post     @relation(fields: [postId], references: [id])
+  postId    Int
+  content   String
+  title     String
+  createdAt DateTime @default(now())
+}
+
+// Many-to-many join tables will be created automatically by Prisma for simple relations above.
+
