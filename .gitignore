@@ -7,5 +7,8 @@ dist
 /.env
 /.env.local
 .DS_Store
+ # Local sqlite dev DB
+ dev.db
+ dev.db-*
 .vercel
 .env*.local
