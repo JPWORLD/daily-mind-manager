@@ -41,12 +41,22 @@ const saveDataUrlS3 = async (dataUrl, filename) => {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.statusCode = 405; res.end('Method Not Allowed'); return; }
 
-  // simple auth: reuse ADMIN_TOKEN or DMM_ADMIN_TOKEN or Firebase check if needed
-  const tokenHeader = req.headers['authorization'] || req.headers['x-admin-token'] || '';
-  const token = (tokenHeader || '').replace(/^Bearer\s+/i, '');
-  const adminToken = process.env.ADMIN_TOKEN || process.env.DMM_ADMIN_TOKEN;
-  if (!adminToken || token !== adminToken) {
-    res.statusCode = 401; res.end(JSON.stringify({ error: 'Unauthorized' })); return;
+  // auth: accept JWT with admin/editor roles, or fallback to Firebase/static token
+  try {
+    const { checkAdmin, getAdminFromReq } = require('../_auth');
+    const decoded = getAdminFromReq(req);
+    let allowed = false;
+    if (decoded && (decoded.role === 'admin' || decoded.role === 'editor')) allowed = true;
+    else {
+      const ok = await checkAdmin(req);
+      if (ok) allowed = true;
+    }
+    if (!allowed) { res.statusCode = 401; res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+  } catch (e) {
+    const tokenHeader = req.headers['authorization'] || req.headers['x-admin-token'] || '';
+    const token = (tokenHeader || '').replace(/^Bearer\s+/i, '');
+    const adminToken = process.env.ADMIN_TOKEN || process.env.DMM_ADMIN_TOKEN;
+    if (!adminToken || token !== adminToken) { res.statusCode = 401; res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
   }
 
   try {

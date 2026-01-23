@@ -12,9 +12,20 @@ app.use(express.json());
 // mount the serverless api handlers
 const postsIndex = require('../api/posts/index');
 const postById = require('../api/posts/[id]');
+const adminHandler = require('../api/admin/index');
+const tagsHandler = require('../api/tags/index');
+const catsHandler = require('../api/categories/index');
 
 app.get('/api/posts', (req, res) => postsIndex(req, res));
 app.post('/api/posts', (req, res) => postsIndex(req, res));
+app.post('/api/admin/login', (req, res) => { req.url = '/login'; adminHandler(req, res); });
+app.post('/api/admin/register', (req, res) => { req.url = '/register'; adminHandler(req, res); });
+app.get('/api/tags', (req, res) => tagsHandler(req, res));
+app.post('/api/tags', (req, res) => tagsHandler(req, res));
+app.get('/api/categories', (req, res) => catsHandler(req, res));
+app.post('/api/categories', (req, res) => catsHandler(req, res));
+app.get('/api/authors', (req, res) => require('../api/authors/index')(req, res));
+app.post('/api/authors', (req, res) => require('../api/authors/index')(req, res));
 app.get('/api/posts/:id', (req, res) => {
   // rewrite url for handler
   req.url = `/api/posts/${req.params.id}`;

@@ -42,14 +42,14 @@ module.exports = async (req, res) => {
       const sanitize = require('sanitize-html');
 
       if (prisma) {
-        const where = { published: true };
+        const where = { status: 'PUBLISHED' };
         const total = await prisma.post.count({ where });
-        const posts = await prisma.post.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * perPage, take: perPage });
-        const postsWithHtml = posts.map(p => ({ ...p, html: sanitize(marked.parse(p.content || '')) }));
+        const posts = await prisma.post.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * perPage, take: perPage, include: { categories: true, tags: true, author: true } });
+        const postsWithHtml = posts.map(p => ({ ...p, categories: p.categories || [], tags: p.tags || [], author: p.author || null, html: sanitize(marked.parse(p.content || '')) }));
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ posts: postsWithHtml, total, page, perPage }));
       } else {
-        const all = readPosts().filter(p => p.published).sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
+        const all = readPosts().filter(p => p.published || p.status === 'PUBLISHED').sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
         const total = all.length;
         const slice = all.slice((page - 1) * perPage, (page - 1) * perPage + perPage);
         const postsWithHtml = slice.map(p => ({ ...p, html: sanitize(marked.parse(p.content || '')) }));
@@ -64,13 +64,21 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'POST') {
-    // Protect write APIs: try Firebase Admin verify if service account present, otherwise ADMIN_TOKEN
-    const ok = await checkAdmin(req);
-    if (!ok) { res.statusCode = 401; res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    // Protect write APIs: require role 'admin' or 'editor'.
+    const { checkAdmin, getAdminFromReq } = require('../_auth');
+    const decoded = getAdminFromReq(req);
+    let allowed = false;
+    if (decoded && (decoded.role === 'admin' || decoded.role === 'editor')) allowed = true;
+    else {
+      // support static ADMIN_TOKEN and Firebase fallback via checkAdmin
+      const ok = await checkAdmin(req);
+      if (ok) allowed = true;
+    }
+    if (!allowed) { res.statusCode = 403; res.end(JSON.stringify({ error: 'Forbidden' })); return; }
     // Basic create - support both raw stream and express.json() parsed body
     const handleCreate = async (data) => {
       try {
-        let { title, slug, content, published, image } = data;
+        let { title, slug, content, published, image, categories, subcategories } = data;
         if (!slug) slug = slugify(title || content || Date.now());
         const errors = await validatePostInput({ title, slug, content });
         if (errors.length) { res.statusCode = 400; res.end(JSON.stringify({ error: errors.join('; ') })); return; }
@@ -79,14 +87,42 @@ module.exports = async (req, res) => {
           // ensure slug unique
           const exists = await prisma.post.findUnique({ where: { slug } });
           if (exists) { res.statusCode = 409; res.end(JSON.stringify({ error: 'slug already exists' })); return; }
-          const post = await prisma.post.create({ data: { title, slug, content, published: !!published, image } });
+          const createData = { title, slug, content, status: published ? 'PUBLISHED' : 'DRAFT', image, scheduledFor: data.scheduledFor || null };
+          // handle categories/tags as relations: connect or create
+          if (Array.isArray(categories) && categories.length) {
+            createData.categories = { connect: [] };
+            for (const name of categories) {
+              const trimmed = String(name || '').trim();
+              if (!trimmed) continue;
+              let cat = await prisma.category.findUnique({ where: { name: trimmed } });
+              if (!cat) cat = await prisma.category.create({ data: { name: trimmed } });
+              createData.categories.connect.push({ id: cat.id });
+            }
+          }
+          if (Array.isArray(subcategories) && subcategories.length) {
+            // map subcategories to tags for simplicity
+            createData.tags = { connect: [] };
+            for (const name of subcategories) {
+              const trimmed = String(name || '').trim();
+              if (!trimmed) continue;
+              let tag = await prisma.tag.findUnique({ where: { name: trimmed } });
+              if (!tag) tag = await prisma.tag.create({ data: { name: trimmed } });
+              createData.tags.connect.push({ id: tag.id });
+            }
+          }
+          // author connect
+          if (data.authorId) {
+            const aid = parseInt(data.authorId, 10);
+            if (!Number.isNaN(aid)) createData.author = { connect: { id: aid } };
+          }
+          const post = await prisma.post.create({ data: createData, include: { categories: true, tags: true } });
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(post));
         } else {
           const posts = readPosts();
           if (posts.find(p => p.slug === slug)) { res.statusCode = 409; res.end(JSON.stringify({ error: 'slug already exists' })); return; }
           const id = (posts.length ? posts[posts.length-1].id + 1 : 1);
-          const entry = { id, title, slug, content, published: !!published, image, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+          const entry = { id, title, slug, content, published: !!published, image, categories: categories || [], subcategories: subcategories || [], views: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
           posts.push(entry); writePosts(posts);
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(entry));
