@@ -202,7 +202,7 @@ const App = () => {
       s.async = true;
       s.crossOrigin = 'anonymous';
       s.setAttribute('data-adsbygoogle-client', client);
-      s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${client}`;
+      s.src = ``;
       document.head.appendChild(s);
     } catch (e) { console.error('adsense inject failed', e); }
   }, []);
@@ -218,7 +218,7 @@ const App = () => {
       const s = document.createElement('script');
       s.async = true;
       s.setAttribute('data-gtag-id', ga);
-      s.src = `https://www.googletagmanager.com/gtag/js?id=${ga}`;
+      s.src = ``;
       document.head.appendChild(s);
       const inline = document.createElement('script');
       // Respect granular consent: analytics_consent and ads_personalization
